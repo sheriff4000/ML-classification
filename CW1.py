@@ -1,6 +1,6 @@
 import numpy as np
 
-def read_file(file):
+def read_file(file: str):
     x = []
     y_labels = []
     with open(file, "r") as infile:
@@ -11,3 +11,5 @@ def read_file(file):
 
         x = np.array(x)
         y = np.array(y)
+
+    return (x, y)
