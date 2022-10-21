@@ -39,7 +39,7 @@ class TrainingSet:
     def unique_labels(self):
         return np.unique(self.labels(), return_counts=True)
 
-    def find_entropy(self):
+    def find_entropy(self) -> float:
         attributes = self.attributes()
         labels = self.labels()
     
@@ -64,6 +64,7 @@ def find_split(training_set: TrainingSet):
     entropy = training_set.find_entropy()
     medians = np.median(training_set.attributes(), axis=1)
     for i in range(training_set.attributes().shape[1]):
+        # TODO: find better way to split
         median = medians[i]
         
         attribute = training_set.dataset[:,i]
@@ -77,24 +78,23 @@ def find_split(training_set: TrainingSet):
 
         if gain > max_gain :
             max_gain = gain
-            split_val = i
+            split_idx = i
+            out_a = a
+            out_b = b
 
-    return split_val, medians[split_val]
+    return split_idx, medians[split_idx], out_a, out_b
 
 def decision_tree_learning(training_dataset, depth):
     data = TrainingSet(training_dataset)
-    labels = data.unique_labels()[0]
+    labels = data.unique_labels()
     if len(labels) == 1: 
         # TODO: bug: what about if 0?
-        return labels[0]
+        return TreeNode(None, None, labels[0], None), depth
     
-    split = find_split(data.dataset)
+    attribute, split_val, l_dataset, r_dataset = find_split(data.dataset)
     
-    # Change to attribute number
-    attribute = None
-    
-    split_cond = SplitCondition(attribute, split)
-    node = TreeNode(None, None, None, split_cond)
+    split_cond = SplitCondition(attribute, split_val)
+    node = TreeNode(l_dataset, r_dataset, None, split_cond)
     
     l_branch, l_depth = decision_tree_learning(l_dataset, depth + 1)
     r_branch, r_depth = decision_tree_learning(r_dataset, depth + 1)
@@ -107,6 +107,10 @@ x = read_file("intro2ML-coursework1/wifi_db/clean_dataset.txt")
 y = TrainingSet(x)
 print(find_split(y))
 
-#TODOS
-#find better way to split?
-#keep track of splits 
+
+# TODO: find other split methods (mean?) & compare splits
+# TODO: pruning
+# TODO: make training set and test set compare accuracy with different values of test set proportion
+# TODO: test overfitting by using noisy dataset
+# TODO: runtime decision tree classify function
+# TODO: visualise tree or something
