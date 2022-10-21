@@ -1,15 +1,10 @@
 import numpy as np
 
 def read_file(file: str):
-    x = []
-    y_labels = []
-    with open(file, "r") as infile:
-        for i, line in enumerate(infile):
-            row = line.split()
-            x.append(list(map(float, row[:-1])))
-            y_labels.append(row[-1])
-
-        x = np.array(x)
-        y = np.array(y)
+    x = np.loadtxt(file, usecols=(0,1,2,3,4,5,6))
+    y = np.loadtxt(file, usecols=7)
 
     return (x, y)
+
+
+print(read_file("intro2ML-coursework1/wifi_db/clean_dataset.txt"))
