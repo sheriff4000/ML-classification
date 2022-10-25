@@ -1,3 +1,5 @@
+#MAKE SURE
+
 from numpy.random import default_rng
 import numpy as np
 
@@ -95,7 +97,7 @@ def decision_tree_learning(training_dataset, depth):
     labels = data.unique_labels()
     if len(labels[0]) == 1: 
         # TODO: bug: what about if 0?
-        print("leaf with label " , labels[0][0])
+        #print("leaf with label " , labels[0][0])
         return TreeNode(None, None, labels[0][0], None), depth
     attribute, split_val, l_dataset, r_dataset = find_split(data)
     
@@ -109,34 +111,79 @@ def decision_tree_learning(training_dataset, depth):
     
     return (node, max(l_depth, r_depth))
 
-def pruning(dataset, node, top_node):
-    tmp_node = node
-    if node.left.leaf is not None and node.right.leaf is not None: 
-        node.left = pruning(dataset, node.left, top_node)
-        #do stuff
-        node.right = pruning(dataset, node.right, top_node)
-    else:
-        accuracies = np.zeros(3,)
-        accuracies[0] = evaluate(dataset, top_node)
-        
-        left_node = node.left
-        right_node = node.right
-    
-        node = left_node
-        accuracies[1] = evaluate(dataset, top_node)
-        node = right_node
-        accuracies[2] = evaluate(dataset, top_node)
-    
-        max_acc = accuracies.argmax()
+def clip_tree(dataset, node, top_node):
+    tmp_node = [node.left, node.right, node.leaf, node.condition]
+    #print("tmp_node", tmp_node)
+    accuracies = np.ndarray((3,1))
+    #print("node = ", node)
+    #print("top node: ", top_node)
+    #print("node leaf = ", node.leaf)
+    #print("clipping")
+    accuracies[0] = evaluate(dataset, top_node)
+    node.leaf = tmp_node[0].leaf
+    node.left = None
+    node.right = None
+    node.condition = None
+    left_node = [node.left, node.right, node.leaf, node.condition]
+    accuracies[1] = evaluate(dataset, top_node)
 
-        match max_acc:
-            case 0:
-                return tmp_node
+    node.leaf = tmp_node[1].leaf
+    node.left = None
+    node.right = None
+    node.condition = None
+    right_node = [node.left, node.right, node.leaf, node.condition]
+    accuracies[2] = evaluate(dataset, top_node)
+    #print(accuracies)
+
+    best_acc_arg = accuracies.argmax()
+    assert left_node[0] is not None or left_node[2] is not None
+    assert right_node[0] is not None or right_node[2] is not None
+    assert tmp_node[0] is not None or tmp_node[2] is not None
+    
+    match best_acc_arg:
+            case 0: 
+                       
+                node.left, node.right, node.leaf, node.condition = tmp_node[0], tmp_node[1], tmp_node[2], tmp_node[3]
+                #print("node_change case 0: ", node)
+                #print("node leaf = ", node.leaf)
+                #print("node left = ", node.left)
+                #print("node right = ", node.right)
+                #print("node left leaf = ", node.left.leaf)
+                #print("node right leaf = ", node.right.leaf)
+                #print("node right = ", node.right)
+                #print('tmp_node: ', tmp_node)
+                assert node.left is not None or node.leaf is not None
+
+                return node
             case 1:
-                return left_node
+                node.left, node.right, node.leaf, node.condition = left_node[0], left_node[1], left_node[2], left_node[3]
+                #print("case 1 right: ", node.right)
+                #print("node_change case 1: ", node)
+                #print("node leaf = ", node.leaf)
+                #print("node left leaf = ", node.left.leaf)
+                #print("node right leaf = ", node.right.leaf)
+                #print('left_node: ', left_node)
+                
+                return node
             case 2:
-                return right_node
-        
+                node.left, node.right, node.leaf, node.condition = right_node[0], right_node[1], right_node[2], right_node[3]
+                #print("node_change case 2: ", node)
+                #print("node leaf = ", node.leaf)
+                #print("node left leaf = ", node.left.leaf)
+                #print("node right leaf = ", node.right.leaf)
+                #print('right_node: ', right_node)
+                return node
+    
+
+def pruning (dataset, node, top_node):
+    if node.leaf is not None:
+        return node
+    else:
+        if node.left.leaf is not None and node.right.leaf is not None: #is this a fruit
+            node = clip_tree(dataset, node, top_node)
+        else: 
+            node.left = pruning(dataset, node.left, top_node)
+            node.right = pruning(dataset, node.right, top_node)          
     return node
 
 def split_dataset(dataset, random_generator=default_rng()):
@@ -148,10 +195,14 @@ def evaluate(test_db, tree_start):
     test_data = Dataset(test_db)
     current_node = tree_start
     y_classified = []
-    print(test_db.shape)
+    #print(test_db.shape)
     assert(len(test_db) !=  0)
     for row in test_data.attributes():
+        #print("current node: ", current_node.left)
         while current_node.leaf is None:
+            #print(current_node.left, current_node.right)
+            assert current_node.left is not None, [current_node]
+            assert current_node.right is not None
             if row[current_node.condition.attribute] < current_node.condition.less_than:
                 current_node = current_node.left
             else:
@@ -159,14 +210,14 @@ def evaluate(test_db, tree_start):
         assert current_node.leaf != None
         y_classified.append(current_node.leaf)
         current_node = tree_start
-    
+
     #simple implementation for accuracy of one run
     #TODO: update to 10 cross fold
     
     y_classified_nparray = np.array(y_classified)
 
-    print(y_classified_nparray)
-    print(test_data.labels())
+    #print(y_classified_nparray)
+    #print(test_data.labels())
 
     accuracy = np.sum(y_classified_nparray == test_data.labels())/len(y_classified)
 
@@ -181,8 +232,14 @@ rg = default_rng(seed)
 data_subsets = split_dataset(x, random_generator=rg)
 training_set = np.concatenate((data_subsets[0], data_subsets[1], data_subsets[2], data_subsets[3], data_subsets[4], data_subsets[5], data_subsets[6], data_subsets[7], data_subsets[8]))
 tree_start_node = decision_tree_learning(training_set, 0)
+print("pre prune eval")
 print(evaluate(data_subsets[9], tree_start_node[0]))
-
+print("pruning")
+#print(tree_start_node[0])
+pruning(data_subsets[9], tree_start_node[0], tree_start_node[0])
+#print(tree_start_node[0])
+print("post prune eval")
+print(evaluate(data_subsets[9], tree_start_node[0]))
 
 # TODO: find other split methods (mean?) & compare splits
 # TODO: pruning
