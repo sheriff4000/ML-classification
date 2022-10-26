@@ -66,30 +66,29 @@ class Dataset:
 def find_split(training_set: Dataset):
     max_gain = 0
     entropy = training_set.find_entropy()
-    medians = np.median(training_set.attributes(), axis=0)
-    for i in range(medians.shape[0]):
+    for i in range(training_set.attributes().shape[1]):
         # TODO: find better way to split
-        median = medians[i]
-        
         attribute = training_set.dataset[:,i]
-        a = Dataset(training_set.dataset[attribute < median])
-        b = Dataset(training_set.dataset[attribute >= median]) 
-        
+        for j in range(int(np.amin(attribute)), int(np.amax(attribute)+1)):
+            a = Dataset(training_set.dataset[attribute < j])
+            b = Dataset(training_set.dataset[attribute >= j]) 
 
-        remainder = ((len(a) / len(training_set)) * a.find_entropy()) + ((len(b) / len(training_set)) * b.find_entropy())
 
-        gain = entropy - remainder
+            remainder = ((len(a) / len(training_set)) * a.find_entropy()) + ((len(b) / len(training_set)) * b.find_entropy())
 
-        if gain >= max_gain:
-            max_gain = gain
-            split_idx = i
-            out_a = a
-            out_b = b
+            gain = entropy - remainder
+
+            if gain >= max_gain:
+                max_gain = gain
+                split_idx = i
+                split_val = j
+                out_a = a
+                out_b = b
         
     
     assert max_gain != 0
 
-    return split_idx, medians[split_idx], out_a.dataset, out_b.dataset
+    return split_idx, split_val, out_a.dataset, out_b.dataset
 
 def decision_tree_learning(training_dataset, depth):
     data = Dataset(training_dataset)
@@ -97,7 +96,6 @@ def decision_tree_learning(training_dataset, depth):
     labels = data.unique_labels()
     if len(labels[0]) == 1: 
         # TODO: bug: what about if 0?
-        #print("leaf with label " , labels[0][0])
         return TreeNode(None, None, labels[0][0], None), depth
     attribute, split_val, l_dataset, r_dataset = find_split(data)
     
@@ -186,10 +184,17 @@ def pruning (dataset, node, top_node):
             node.right = pruning(dataset, node.right, top_node)          
     return node
 
-def split_dataset(dataset, random_generator=default_rng()):
+def split_dataset(dataset, test_idx, random_generator=default_rng()):
     shuffled_indecies = random_generator.permutation(len(dataset))
     shuffled_dataset = dataset[shuffled_indecies]
-    return np.array(np.split(shuffled_dataset, 10))
+    
+    subsets = np.split(shuffled_dataset, 10)
+    
+    test_data = subsets.pop(test_idx)
+    training_data = np.concatenate((subsets[0], subsets[1], subsets[2], subsets[3], subsets[4], subsets[5], subsets[6], subsets[7], subsets[8]))
+    
+    return training_data, test_data
+
 
 def evaluate(test_db, tree_start):
     test_data = Dataset(test_db)
@@ -210,17 +215,10 @@ def evaluate(test_db, tree_start):
         assert current_node.leaf != None
         y_classified.append(current_node.leaf)
         current_node = tree_start
-
-    #simple implementation for accuracy of one run
-    #TODO: update to 10 cross fold
-    
+        
     y_classified_nparray = np.array(y_classified)
 
-    #print(y_classified_nparray)
-    #print(test_data.labels())
-
     accuracy = np.sum(y_classified_nparray == test_data.labels())/len(y_classified)
-
 
     return accuracy
 
@@ -229,17 +227,20 @@ Test()
 x = np.loadtxt("intro2ML-coursework1/wifi_db/noisy_dataset.txt", delimiter=" ")
 seed = 6969
 rg = default_rng(seed)
-data_subsets = split_dataset(x, random_generator=rg)
-training_set = np.concatenate((data_subsets[0], data_subsets[1], data_subsets[2], data_subsets[3], data_subsets[4], data_subsets[5], data_subsets[6], data_subsets[7], data_subsets[8]))
-tree_start_node = decision_tree_learning(training_set, 0)
-print("pre prune eval")
-print(evaluate(data_subsets[9], tree_start_node[0]))
-print("pruning")
-#print(tree_start_node[0])
-pruning(data_subsets[9], tree_start_node[0], tree_start_node[0])
-#print(tree_start_node[0])
-print("post prune eval")
-print(evaluate(data_subsets[9], tree_start_node[0]))
+pre_prune_accs = 0
+post_prune_accs = 0
+for i in range(10):
+    training_data, test_data = split_dataset(x, i, random_generator=rg)
+    tree_start_node = decision_tree_learning(training_data, 0)
+
+    pre_prune_accs += evaluate(test_data, tree_start_node[0])
+    
+    pruning(test_data, tree_start_node[0], tree_start_node[0])
+    
+    post_prune_accs += evaluate(test_data, tree_start_node[0])
+
+print("pre prune 10 fold average accuracy ", pre_prune_accs/10)
+print("post prune 10 fold average accuracy ", post_prune_accs/10)
 
 # TODO: find other split methods (mean?) & compare splits
 # TODO: pruning
