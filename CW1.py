@@ -1,5 +1,6 @@
 #MAKE SURE
 
+from wsgiref import validate
 from numpy.random import default_rng
 import numpy as np
 
@@ -184,6 +185,8 @@ def pruning (dataset, node, top_node):
             node.right = pruning(dataset, node.right, top_node)          
     return node
 
+
+#split 80/10/10
 def split_dataset(dataset, test_idx, random_generator=default_rng()):
     shuffled_indecies = random_generator.permutation(len(dataset))
     shuffled_dataset = dataset[shuffled_indecies]
@@ -191,9 +194,28 @@ def split_dataset(dataset, test_idx, random_generator=default_rng()):
     subsets = np.split(shuffled_dataset, 10)
     
     test_data = subsets.pop(test_idx)
-    training_data = np.concatenate((subsets[0], subsets[1], subsets[2], subsets[3], subsets[4], subsets[5], subsets[6], subsets[7], subsets[8]))
+    validation_data = subsets.pop(0)
+    training_data = np.concatenate((subsets[0], subsets[1], subsets[2], subsets[3], subsets[4], subsets[5], subsets[6], subsets[7]))
     
-    return training_data, test_data
+    return training_data, test_data, validation_data
+
+
+# split with 60/20/20
+# def split_dataset(dataset, test_idx, random_generator=default_rng()):
+#     shuffled_indecies = random_generator.permutation(len(dataset))
+#     shuffled_dataset = dataset[shuffled_indecies]
+    
+#     subsets = np.split(shuffled_dataset, 10)
+    
+#     test_data1 = subsets.pop(test_idx)
+#     test_data2 = subsets.pop(test_idx%9)
+#     test_data = np.concatenate((test_data1, test_data2))
+#     validation_data1 = subsets.pop(0)
+#     validation_data2 = subsets.pop(0)
+#     validation_data = np.concatenate((validation_data1, validation_data2))
+#     training_data = np.concatenate((subsets[0], subsets[1], subsets[2], subsets[3], subsets[4], subsets[5]))
+    
+#     return training_data, test_data, validation_data
 
 
 def evaluate(test_db, tree_start):
@@ -224,26 +246,22 @@ def evaluate(test_db, tree_start):
 
 Test()
 
-x = np.loadtxt("intro2ML-coursework1/wifi_db/noisy_dataset.txt", delimiter=" ")
+x = np.loadtxt("intro2ML-coursework1/wifi_db/clean_dataset.txt", delimiter="\t")
 seed = 6969
 rg = default_rng(seed)
 pre_prune_accs = 0
 post_prune_accs = 0
 for i in range(10):
-    training_data, test_data = split_dataset(x, i, random_generator=rg)
+    training_data, test_data, validation_data = split_dataset(x, i, random_generator=rg)
     tree_start_node = decision_tree_learning(training_data, 0)
 
     pre_prune_accs += evaluate(test_data, tree_start_node[0])
     
-    pruning(test_data, tree_start_node[0], tree_start_node[0])
+    pruning(validation_data, tree_start_node[0], tree_start_node[0])
     
     post_prune_accs += evaluate(test_data, tree_start_node[0])
 
 print("pre prune 10 fold average accuracy ", pre_prune_accs/10)
 print("post prune 10 fold average accuracy ", post_prune_accs/10)
 
-# TODO: find other split methods (mean?) & compare splits
-# TODO: pruning
-# TODO: make training set and test set compare accuracy with different values of test set proportion
-# TODO: test overfitting by using noisy dataset
 # TODO: visualise tree or something
