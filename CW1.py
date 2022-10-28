@@ -187,14 +187,17 @@ def pruning (dataset, node, top_node):
 
 
 #split 80/10/10
-def split_dataset(dataset, test_idx, random_generator=default_rng()):
+def shuffle_dataset(dataset, random_generator=default_rng()):
     shuffled_indecies = random_generator.permutation(len(dataset))
     shuffled_dataset = dataset[shuffled_indecies]
     
-    subsets = np.split(shuffled_dataset, 10)
+    return shuffled_dataset
+
+def split_dataset(dataset, test_idx):
+    subsets = np.split(dataset, 10)
     
     test_data = subsets.pop(test_idx)
-    validation_data = subsets.pop(0)
+    validation_data = subsets.pop((test_idx+1)%9)
     training_data = np.concatenate((subsets[0], subsets[1], subsets[2], subsets[3], subsets[4], subsets[5], subsets[6], subsets[7]))
     
     return training_data, test_data, validation_data
@@ -246,21 +249,28 @@ def evaluate(test_db, tree_start):
 
 Test()
 
-x = np.loadtxt("intro2ML-coursework1/wifi_db/clean_dataset.txt", delimiter="\t")
+x = np.loadtxt("intro2ML-coursework1/wifi_db/noisy_dataset.txt", delimiter=" ")
 seed = 6969
 rg = default_rng(seed)
+no_prune_accs = 0
 pre_prune_accs = 0
 post_prune_accs = 0
+shuffled_dataset = shuffle_dataset(x, random_generator=rg)
 for i in range(10):
-    training_data, test_data, validation_data = split_dataset(x, i, random_generator=rg)
+    training_data, test_data, validation_data = split_dataset(shuffled_dataset, i)
+    training_data_no_prune = np.concatenate((training_data, validation_data))
+
+    tree_start_node_no_prune = decision_tree_learning(training_data_no_prune, 0)
     tree_start_node = decision_tree_learning(training_data, 0)
 
+    no_prune_accs += evaluate(test_data, tree_start_node_no_prune[0])
     pre_prune_accs += evaluate(test_data, tree_start_node[0])
     
     pruning(validation_data, tree_start_node[0], tree_start_node[0])
     
     post_prune_accs += evaluate(test_data, tree_start_node[0])
 
+print("no prune 10 fold average accuracy ", no_prune_accs/10)
 print("pre prune 10 fold average accuracy ", pre_prune_accs/10)
 print("post prune 10 fold average accuracy ", post_prune_accs/10)
 
