@@ -118,20 +118,20 @@ def clip_tree(dataset, node, top_node):
     #print("top node: ", top_node)
     #print("node leaf = ", node.leaf)
     #print("clipping")
-    accuracies[0] = evaluate(dataset, top_node)
+    accuracies[0] = evaluate(dataset, top_node)[0]
     node.leaf = tmp_node[0].leaf
     node.left = None
     node.right = None
     node.condition = None
     left_node = [node.left, node.right, node.leaf, node.condition]
-    accuracies[1] = evaluate(dataset, top_node)
+    accuracies[1] = evaluate(dataset, top_node)[0]
 
     node.leaf = tmp_node[1].leaf
     node.left = None
     node.right = None
     node.condition = None
     right_node = [node.left, node.right, node.leaf, node.condition]
-    accuracies[2] = evaluate(dataset, top_node)
+    accuracies[2] = evaluate(dataset, top_node)[0]
     #print(accuracies)
 
     best_acc_arg = accuracies.argmax()
@@ -245,7 +245,12 @@ def evaluate(test_db, tree_start):
 
     accuracy = np.sum(y_classified_nparray == test_data.labels())/len(y_classified)
 
-    return accuracy
+    confusion_matrix = np.zeros((4, 4))
+
+    for i in range(len(y_classified_nparray)):
+        confusion_matrix[int(test_data.labels()[i])-1, int(y_classified_nparray[i])-1] += 1
+
+    return accuracy, confusion_matrix
 
 Test()
 
@@ -263,12 +268,15 @@ for i in range(10):
     tree_start_node_no_prune = decision_tree_learning(training_data_no_prune, 0)
     tree_start_node = decision_tree_learning(training_data, 0)
 
-    no_prune_accs += evaluate(test_data, tree_start_node_no_prune[0])
-    pre_prune_accs += evaluate(test_data, tree_start_node[0])
+    no_prune_accs += evaluate(test_data, tree_start_node_no_prune[0])[0]
+    pre_prune_accs += evaluate(test_data, tree_start_node[0])[0]
     
     pruning(validation_data, tree_start_node[0], tree_start_node[0])
     
-    post_prune_accs += evaluate(test_data, tree_start_node[0])
+    post_prune_eval = evaluate(test_data, tree_start_node[0])
+    post_prune_accs += post_prune_eval[0]
+    print(post_prune_eval[1])
+
 
 print("no prune 10 fold average accuracy ", no_prune_accs/10)
 print("pre prune 10 fold average accuracy ", pre_prune_accs/10)
