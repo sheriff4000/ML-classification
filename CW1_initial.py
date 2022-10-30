@@ -15,12 +15,11 @@ class Test:
 
 
 class TreeNode:
-    def __init__(self, left, right, leaf, condition, pruned) -> None:
+    def __init__(self, left, right, leaf, condition) -> None:
         self.left = left
         self.right = right
         self.leaf = leaf
         self.condition = condition
-        self.pruning = pruned
 
 
 class SplitCondition:
@@ -104,7 +103,7 @@ def decision_tree_learning(training_dataset, depth):
     labels = data.unique_labels()
     if len(labels[0]) == 1:
         # TODO: bug: what about if 0?
-        return TreeNode(None, None, labels[0][0], None, False), depth
+        return TreeNode(None, None, labels[0][0], None), depth
     attribute, split_val, l_dataset, r_dataset = find_split(data)
 
     split_cond = SplitCondition(attribute, split_val)
@@ -112,33 +111,31 @@ def decision_tree_learning(training_dataset, depth):
     l_branch, l_depth = decision_tree_learning(l_dataset, depth + 1)
     r_branch, r_depth = decision_tree_learning(r_dataset, depth + 1)
 
-    node = TreeNode(l_branch, r_branch, None, split_cond, False)
+    node = TreeNode(l_branch, r_branch, None, split_cond)
 
     return (node, max(l_depth, r_depth))
 
 
 def clip_tree(dataset, node, top_node):
-    tmp_node = [node.left, node.right, node.leaf, node.condition, node.pruning]
+
+    if node.left.leaf == node.right.leaf:
+        return node.left
+    tmp_node = [node.left, node.right, node.leaf, node.condition]
     accuracies = np.ndarray((3, 1))
     accuracies[0] = evaluate(dataset, top_node)
     node.leaf = tmp_node[0].leaf
     node.left = None
     node.right = None
     node.condition = None
-    node.pruning = False
-    left_node = [node.left, node.right,
-                 node.leaf, node.condition, node.pruning]
+    left_node = [node.left, node.right, node.leaf, node.condition]
     accuracies[1] = evaluate(dataset, top_node)
 
     node.leaf = tmp_node[1].leaf
     node.left = None
     node.right = None
     node.condition = None
-    node.pruning
-    right_node = [node.left, node.right,
-                  node.leaf, node.condition, node.pruning]
+    right_node = [node.left, node.right, node.leaf, node.condition]
     accuracies[2] = evaluate(dataset, top_node)
-    print(accuracies)
 
     best_acc_arg = accuracies.argmax()
     assert left_node[0] is not None or left_node[2] is not None
@@ -148,42 +145,30 @@ def clip_tree(dataset, node, top_node):
     match best_acc_arg:
         case 0:
 
-            node.left, node.right, node.leaf, node.condition, node.pruning = tmp_node[
-                0], tmp_node[1], tmp_node[2], tmp_node[3], tmp_node[4]
-            print("case 0: ", node.pruning)
+            node.left, node.right, node.leaf, node.condition = tmp_node[
+                0], tmp_node[1], tmp_node[2], tmp_node[3]
             assert node.left is not None or node.leaf is not None
-            assert node.pruning is False
+
             return node
         case 1:
-            node.left, node.right, node.leaf, node.condition, node.pruning = left_node[
-                0], left_node[1], left_node[2], left_node[3], True
-            print("case 1: ", node.pruning)
-            assert node.pruning is True
+            node.left, node.right, node.leaf, node.condition = left_node[
+                0], left_node[1], left_node[2], left_node[3]
             return node
         case 2:
-            node.left, node.right, node.leaf, node.condition, node.pruning = right_node[
-                0], right_node[1], right_node[2], right_node[3], True
-            print("case 2: ", node.pruning)
-            assert node.pruning is True
+            node.left, node.right, node.leaf, node.condition = right_node[
+                0], right_node[1], right_node[2], right_node[3]
             return node
 
 
 def pruning(dataset, node, top_node):
     if node.leaf is not None:
         return node
-    if node.left.leaf is not None and node.right.leaf is not None:  # is this a fruit
-        node = clip_tree(dataset, node, top_node)
-        return node
-    if (node.left.leaf is None and node.right.leaf is not None) or (node.left.leaf is not None and node.right.leaf is None) or (node.left.leaf is None and node.right.leaf is None):
-        node.left = pruning(dataset, node.left, top_node)
-        node.right = pruning(dataset, node.right, top_node)
-        if node.left.pruning is True or node.right.pruning is True:
-            node.left.pruning = False
-            node.right.pruning = False
-            print("repruning")
-            print("RE left pruned val: ", node.left.pruning)
-            print("RE right pruned val: ", node.right.pruning)
-            node = pruning(dataset, node, top_node)
+    else:
+        if node.left.leaf is not None and node.right.leaf is not None:  # is this a fruit
+            node = clip_tree(dataset, node, top_node)
+        else:
+            node.left = pruning(dataset, node.left, top_node)
+            node.right = pruning(dataset, node.right, top_node)
     return node
 
 
@@ -223,6 +208,25 @@ def shuffle_dataset(dataset, random_generator=default_rng()):
 #     return training_data, test_data, validation_data
 
 
+def print_tree(node, outfile, num_arrows):
+    if node.leaf is not None:
+        for i in range(num_arrows):
+            outfile.write("-")
+
+        outfile.write(str(node.leaf) + "\n")
+        num_arrows -= 1
+        return node
+    else:
+        for i in range(num_arrows):
+            outfile.write("-")
+
+        num_arrows += 1
+        outfile.write("node\n")
+        node.left = print_tree(node.left, outfile, num_arrows)
+        node.right = print_tree(node.right, outfile, num_arrows)
+    return node
+
+
 def evaluate(test_db, tree_start):
     test_data = Dataset(test_db)
     current_node = tree_start
@@ -252,14 +256,14 @@ def evaluate(test_db, tree_start):
 
 
 def copy_tree(node):
-    new_tree = TreeNode(None, None, node.leaf, None, False)
+    new_tree = TreeNode(None, None, node.leaf, None)
     if node.leaf is None:
         left = copy_tree(node.left)
         right = copy_tree(node.right)
 
         condition = node.condition
         leaf = node.leaf
-        new_tree = TreeNode(left, right, leaf, condition, False)
+        new_tree = TreeNode(left, right, leaf, condition)
 
     return new_tree
 
@@ -288,18 +292,24 @@ pre_prune_accs = 0
 post_prune_accs = 0
 best_prune_accs = 0
 copy_accs = 0
-tmp = 0
 shuffled_dataset = shuffle_dataset(x, random_generator=rg)
 for i in range(10):
     training_data, test_data, validation_data = split_dataset(
         shuffled_dataset, i)  # splitting dataset every time
     # creating new tree based on new training data
     tree_start_node = decision_tree_learning(training_data, 0)
-    if tmp == 0:
+
+    if i == 0:
         best_pruned_tree = tree_start_node[0]
         best_acc = evaluate(test_data, tree_start_node[0])
-        tmp = 1
-
+    if i == 9:
+        with open("original_tree_vis_initial.txt", "w") as outfile:
+            print_tree(tree_start_node[0], outfile, num_arrows=0)
+        with open("pruned_tree_vis_initial.txt", "w") as outfile:
+            print_tree(pruning(
+                validation_data, tree_start_node[0], tree_start_node[0]), outfile, num_arrows=0)
+    best_pruned_tree, best_acc = find_prune(
+        best_pruned_tree, validation_data, test_data, best_acc)
     prune_acc = evaluate(test_data, tree_start_node[0])
     best_pruned_tree, best_acc = find_prune(
         best_pruned_tree, validation_data, test_data, best_acc)
@@ -310,5 +320,5 @@ print("pre accs", pre_prune_accs/10)
 print("best pruned acc ", best_acc)
 
 print("tested against opposite datasets ", evaluate(y, best_pruned_tree))
-
+#print_tree(best_pruned_tree, num_arrows=0)
 # TODO: visualise tree or something

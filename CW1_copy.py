@@ -119,8 +119,13 @@ def decision_tree_learning(training_dataset, depth):
 
 def clip_tree(dataset, node, top_node):
     tmp_node = [node.left, node.right, node.leaf, node.condition, node.pruning]
+    #print("tmp_node", tmp_node)
     accuracies = np.ndarray((3, 1))
-    accuracies[0] = evaluate(dataset, top_node)
+    #print("node = ", node)
+    #print("top node: ", top_node)
+    #print("node leaf = ", node.leaf)
+    # print("clipping")
+    accuracies[0] = evaluate(dataset, top_node)[0]
     node.leaf = tmp_node[0].leaf
     node.left = None
     node.right = None
@@ -128,17 +133,17 @@ def clip_tree(dataset, node, top_node):
     node.pruning = False
     left_node = [node.left, node.right,
                  node.leaf, node.condition, node.pruning]
-    accuracies[1] = evaluate(dataset, top_node)
+    accuracies[1] = evaluate(dataset, top_node)[0]
 
     node.leaf = tmp_node[1].leaf
     node.left = None
     node.right = None
     node.condition = None
-    node.pruning
+    node.pruning = False
     right_node = [node.left, node.right,
                   node.leaf, node.condition, node.pruning]
-    accuracies[2] = evaluate(dataset, top_node)
-    print(accuracies)
+    accuracies[2] = evaluate(dataset, top_node)[0]
+    # print(accuracies)
 
     best_acc_arg = accuracies.argmax()
     assert left_node[0] is not None or left_node[2] is not None
@@ -150,21 +155,36 @@ def clip_tree(dataset, node, top_node):
 
             node.left, node.right, node.leaf, node.condition, node.pruning = tmp_node[
                 0], tmp_node[1], tmp_node[2], tmp_node[3], tmp_node[4]
-            print("case 0: ", node.pruning)
+            #print("node_change case 0: ", node)
+            #print("node leaf = ", node.leaf)
+            #print("node left = ", node.left)
+            #print("node right = ", node.right)
+            #print("node left leaf = ", node.left.leaf)
+            #print("node right leaf = ", node.right.leaf)
+            #print("node right = ", node.right)
+            #print('tmp_node: ', tmp_node)
             assert node.left is not None or node.leaf is not None
-            assert node.pruning is False
+
             return node
         case 1:
             node.left, node.right, node.leaf, node.condition, node.pruning = left_node[
                 0], left_node[1], left_node[2], left_node[3], True
-            print("case 1: ", node.pruning)
-            assert node.pruning is True
+            #print("case 1 right: ", node.right)
+            #print("node_change case 1: ", node)
+            #print("node leaf = ", node.leaf)
+            #print("node left leaf = ", node.left.leaf)
+            #print("node right leaf = ", node.right.leaf)
+            #print('left_node: ', left_node)
+
             return node
         case 2:
             node.left, node.right, node.leaf, node.condition, node.pruning = right_node[
                 0], right_node[1], right_node[2], right_node[3], True
-            print("case 2: ", node.pruning)
-            assert node.pruning is True
+            #print("node_change case 2: ", node)
+            #print("node leaf = ", node.leaf)
+            #print("node left leaf = ", node.left.leaf)
+            #print("node right leaf = ", node.right.leaf)
+            #print('right_node: ', right_node)
             return node
 
 
@@ -177,6 +197,8 @@ def pruning(dataset, node, top_node):
     if (node.left.leaf is None and node.right.leaf is not None) or (node.left.leaf is not None and node.right.leaf is None) or (node.left.leaf is None and node.right.leaf is None):
         node.left = pruning(dataset, node.left, top_node)
         node.right = pruning(dataset, node.right, top_node)
+        #print("left pruning:", node.left.pruning)
+        #print("right pruning:", node.right.pruning)
         if node.left.pruning is True or node.right.pruning is True:
             node.left.pruning = False
             node.right.pruning = False
@@ -188,22 +210,23 @@ def pruning(dataset, node, top_node):
 
 
 # split 80/10/10
+def shuffle_dataset(dataset, random_generator=default_rng()):
+    shuffled_indecies = random_generator.permutation(len(dataset))
+    shuffled_dataset = dataset[shuffled_indecies]
+
+    return shuffled_dataset
+
+
 def split_dataset(dataset, test_idx):
     subsets = np.split(dataset, 10)
 
     test_data = subsets.pop(test_idx)
-    validation_data = subsets.pop(0)
+    validation_data = subsets.pop((test_idx+1) % 9)
     training_data = np.concatenate(
         (subsets[0], subsets[1], subsets[2], subsets[3], subsets[4], subsets[5], subsets[6], subsets[7]))
 
     return training_data, test_data, validation_data
 
-
-def shuffle_dataset(dataset, random_generator=default_rng()):
-    shuffled_indicies = random_generator.permutation(len(dataset))
-    shuffled_dataset = dataset[shuffled_indicies]
-
-    return shuffled_dataset
 
 # split with 60/20/20
 # def split_dataset(dataset, test_idx, random_generator=default_rng()):
@@ -248,67 +271,46 @@ def evaluate(test_db, tree_start):
     accuracy = np.sum(y_classified_nparray ==
                       test_data.labels())/len(y_classified)
 
-    return accuracy
+    confusion_matrix = np.zeros((4, 4))
 
+    for i in range(len(y_classified_nparray)):
+        confusion_matrix[int(test_data.labels()[i])-1,
+                         int(y_classified_nparray[i])-1] += 1
 
-def copy_tree(node):
-    new_tree = TreeNode(None, None, node.leaf, None, False)
-    if node.leaf is None:
-        left = copy_tree(node.left)
-        right = copy_tree(node.right)
-
-        condition = node.condition
-        leaf = node.leaf
-        new_tree = TreeNode(left, right, leaf, condition, False)
-
-    return new_tree
-
-
-def find_prune(node, validation_data, test_data, best_acc):
-
-    prune_tree = copy_tree(node)
-    test_prune = pruning(validation_data, prune_tree, prune_tree)
-
-    current_acc = evaluate(test_data, test_prune)
-
-    if current_acc > best_acc:
-        return test_prune, current_acc
-    else:
-        return node, best_acc
+    return accuracy, confusion_matrix
 
 
 Test()
 
-y = np.loadtxt("intro2ML-coursework1/wifi_db/noisy_dataset.txt", delimiter=" ")
-x = np.loadtxt(
-    "intro2ML-coursework1/wifi_db/clean_dataset.txt", delimiter="\t")
+x = np.loadtxt("intro2ML-coursework1/wifi_db/noisy_dataset.txt", delimiter=" ")
 seed = 6969
 rg = default_rng(seed)
+no_prune_accs = 0
 pre_prune_accs = 0
 post_prune_accs = 0
-best_prune_accs = 0
-copy_accs = 0
-tmp = 0
 shuffled_dataset = shuffle_dataset(x, random_generator=rg)
 for i in range(10):
     training_data, test_data, validation_data = split_dataset(
-        shuffled_dataset, i)  # splitting dataset every time
-    # creating new tree based on new training data
+        shuffled_dataset, i)
+    training_data_no_prune = np.concatenate((training_data, validation_data))
+
+    tree_start_node_no_prune = decision_tree_learning(
+        training_data_no_prune, 0)
     tree_start_node = decision_tree_learning(training_data, 0)
-    if tmp == 0:
-        best_pruned_tree = tree_start_node[0]
-        best_acc = evaluate(test_data, tree_start_node[0])
-        tmp = 1
 
-    prune_acc = evaluate(test_data, tree_start_node[0])
-    best_pruned_tree, best_acc = find_prune(
-        best_pruned_tree, validation_data, test_data, best_acc)
-    pre_prune_accs += prune_acc
+    no_prune_accs += evaluate(test_data, tree_start_node_no_prune[0])[0]
+    pre_prune_accs += evaluate(test_data, tree_start_node[0])[0]
+
+    pruning_node = pruning(
+        validation_data, tree_start_node[0], tree_start_node[0])
+
+    post_prune_eval = evaluate(test_data, pruning_node)
+    post_prune_accs += post_prune_eval[0]
+    # print(post_prune_eval[1])
 
 
-print("pre accs", pre_prune_accs/10)
-print("best pruned acc ", best_acc)
-
-print("tested against opposite datasets ", evaluate(y, best_pruned_tree))
+print("no prune 10 fold average accuracy ", no_prune_accs/10)
+print("pre prune 10 fold average accuracy ", pre_prune_accs/10)
+print("post prune 10 fold average accuracy ", post_prune_accs/10)
 
 # TODO: visualise tree or something

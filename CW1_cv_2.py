@@ -3,6 +3,7 @@
 from wsgiref import validate
 from numpy.random import default_rng
 import numpy as np
+import random
 
 
 class Test:
@@ -120,7 +121,7 @@ def decision_tree_learning(training_dataset, depth):
 def clip_tree(dataset, node, top_node):
     tmp_node = [node.left, node.right, node.leaf, node.condition, node.pruning]
     accuracies = np.ndarray((3, 1))
-    accuracies[0] = evaluate(dataset, top_node)
+    accuracies[0] = evaluate(dataset, top_node)[0]
     node.leaf = tmp_node[0].leaf
     node.left = None
     node.right = None
@@ -128,7 +129,7 @@ def clip_tree(dataset, node, top_node):
     node.pruning = False
     left_node = [node.left, node.right,
                  node.leaf, node.condition, node.pruning]
-    accuracies[1] = evaluate(dataset, top_node)
+    accuracies[1] = evaluate(dataset, top_node)[0]
 
     node.leaf = tmp_node[1].leaf
     node.left = None
@@ -137,7 +138,7 @@ def clip_tree(dataset, node, top_node):
     node.pruning
     right_node = [node.left, node.right,
                   node.leaf, node.condition, node.pruning]
-    accuracies[2] = evaluate(dataset, top_node)
+    accuracies[2] = evaluate(dataset, top_node)[0]
     print(accuracies)
 
     best_acc_arg = accuracies.argmax()
@@ -192,11 +193,14 @@ def split_dataset(dataset, test_idx):
     subsets = np.split(dataset, 10)
 
     test_data = subsets.pop(test_idx)
-    validation_data = subsets.pop(0)
+    validation_index = random.randint(0, 8)
+    pruning_index = random.randint(0, 7)
+    validation_data = subsets.pop(validation_index)
+    pruning_data = subsets.pop(pruning_index)
     training_data = np.concatenate(
-        (subsets[0], subsets[1], subsets[2], subsets[3], subsets[4], subsets[5], subsets[6], subsets[7]))
+        (subsets[0], subsets[1], subsets[2], subsets[3], subsets[4], subsets[5], subsets[6]))
 
-    return training_data, test_data, validation_data
+    return training_data, test_data, validation_data, pruning_data
 
 
 def shuffle_dataset(dataset, random_generator=default_rng()):
@@ -248,7 +252,13 @@ def evaluate(test_db, tree_start):
     accuracy = np.sum(y_classified_nparray ==
                       test_data.labels())/len(y_classified)
 
-    return accuracy
+    confusion_matrix = np.zeros((4, 4))
+
+    for i in range(len(y_classified_nparray)):
+        confusion_matrix[int(test_data.labels()[i])-1,
+                         int(y_classified_nparray[i])-1] += 1
+
+    return accuracy, confusion_matrix
 
 
 def copy_tree(node):
@@ -264,12 +274,14 @@ def copy_tree(node):
     return new_tree
 
 
-def find_prune(node, validation_data, test_data, best_acc):
+def find_prune(node, validation_data, pruning_data, best_acc):
 
     prune_tree = copy_tree(node)
-    test_prune = pruning(validation_data, prune_tree, prune_tree)
+    test_prune = pruning(pruning_data, prune_tree, prune_tree)
 
-    current_acc = evaluate(test_data, test_prune)
+    current_acc, current_mat = evaluate(validation_data, test_prune)
+
+    print(current_mat)
 
     if current_acc > best_acc:
         return test_prune, current_acc
@@ -291,24 +303,36 @@ copy_accs = 0
 tmp = 0
 shuffled_dataset = shuffle_dataset(x, random_generator=rg)
 for i in range(10):
-    training_data, test_data, validation_data = split_dataset(
+    training_data, test_data, validation_data, pruning_data = split_dataset(
         shuffled_dataset, i)  # splitting dataset every time
     # creating new tree based on new training data
+    #print("training data: ", training_data)
+    #print("test data: ", test_data)
+    #print("validation data: ", validation_data)
+    #print("pruning data: ", pruning_data)
+    training_data_no_prune = np.concatenate(
+        (training_data, validation_data, pruning_data))
+
+    tree_start_node_no_prune = decision_tree_learning(
+        training_data_no_prune, 0)
+
     tree_start_node = decision_tree_learning(training_data, 0)
     if tmp == 0:
         best_pruned_tree = tree_start_node[0]
-        best_acc = evaluate(test_data, tree_start_node[0])
+        best_acc = evaluate(pruning_data, tree_start_node[0])[0]
         tmp = 1
 
-    prune_acc = evaluate(test_data, tree_start_node[0])
+    no_prune_acc = evaluate(test_data, tree_start_node_no_prune[0])
     best_pruned_tree, best_acc = find_prune(
-        best_pruned_tree, validation_data, test_data, best_acc)
-    pre_prune_accs += prune_acc
+        best_pruned_tree, validation_data, pruning_data, best_acc)
+    #pre_prune_accs += prune_acc[0]
+    # print(prune_acc[1])
 
-
-print("pre accs", pre_prune_accs/10)
+print("no prune acc", no_prune_acc[0])
+print("pre prune accs", evaluate(pruning_data, tree_start_node[0])[0])
 print("best pruned acc ", best_acc)
 
-print("tested against opposite datasets ", evaluate(y, best_pruned_tree))
+print("tested against opposite datasets ",
+      evaluate(y, best_pruned_tree)[0])
 
 # TODO: visualise tree or something
