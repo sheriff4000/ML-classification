@@ -80,8 +80,7 @@ def find_split(training_set: Dataset):
             a = Dataset(training_set.dataset[attribute < j])
             b = Dataset(training_set.dataset[attribute >= j])
 
-            remainder = ((len(a) / len(training_set)) * a.find_entropy()) + \
-                ((len(b) / len(training_set)) * b.find_entropy())
+            remainder = ((len(a) / len(training_set)) * a.find_entropy()) + ((len(b) / len(training_set)) * b.find_entropy())
 
             gain = entropy - remainder
 
@@ -128,8 +127,7 @@ def clip_tree(dataset, node, top_node):
     node.right = None
     node.condition = None
     node.pruning = False
-    left_node = [node.left, node.right,
-                 node.leaf, node.condition, node.pruning]
+    left_node = [node.left, node.right, node.leaf, node.condition, node.pruning]
     accuracies[0] = evaluate(dataset, top_node)[0]
 
     node.leaf = tmp_node[1].leaf
@@ -137,8 +135,7 @@ def clip_tree(dataset, node, top_node):
     node.right = None
     node.condition = None
     node.pruning
-    right_node = [node.left, node.right,
-                  node.leaf, node.condition, node.pruning]
+    right_node = [node.left, node.right, node.leaf, node.condition, node.pruning]
     accuracies[1] = evaluate(dataset, top_node)[0]
     # print(accuracies)
 
@@ -150,21 +147,18 @@ def clip_tree(dataset, node, top_node):
     match best_acc_arg:
         case 2:
 
-            node.left, node.right, node.leaf, node.condition, node.pruning = tmp_node[
-                0], tmp_node[1], tmp_node[2], tmp_node[3], tmp_node[4]
+            node.left, node.right, node.leaf, node.condition, node.pruning = tmp_node[0], tmp_node[1], tmp_node[2], tmp_node[3], tmp_node[4]
             # print("case 0: ", node.pruning)
             assert node.left is not None or node.leaf is not None
             assert node.pruning is False
             return node
         case 0:
-            node.left, node.right, node.leaf, node.condition, node.pruning = left_node[
-                0], left_node[1], left_node[2], left_node[3], True
+            node.left, node.right, node.leaf, node.condition, node.pruning = left_node[0], left_node[1], left_node[2], left_node[3], True
             # print("case 1: ", node.pruning)
             assert node.pruning is True
             return node
         case 1:
-            node.left, node.right, node.leaf, node.condition, node.pruning = right_node[
-                0], right_node[1], right_node[2], right_node[3], True
+            node.left, node.right, node.leaf, node.condition, node.pruning = right_node[0], right_node[1], right_node[2], right_node[3], True
             # print("case 2: ", node.pruning)
             assert node.pruning is True
             return node
@@ -269,14 +263,12 @@ def evaluate(test_db, tree_start):
 
     y_classified_nparray = np.array(y_classified)
 
-    accuracy = np.sum(y_classified_nparray ==
-                      test_data.labels())/len(y_classified)
+    accuracy = np.sum(y_classified_nparray == test_data.labels())/len(y_classified)
 
     confusion_matrix = np.zeros((4, 4))
 
     for i in range(len(y_classified_nparray)):
-        confusion_matrix[int(test_data.labels()[i])-1,
-                         int(y_classified_nparray[i])-1] += 1
+        confusion_matrix[int(test_data.labels()[i])-1, int(y_classified_nparray[i])-1] += 1
 
     return accuracy, confusion_matrix
 
