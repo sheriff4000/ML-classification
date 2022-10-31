@@ -154,43 +154,20 @@ def clip_tree(dataset, node, top_node):
     assert right_node[0] is not None or right_node[2] is not None
     assert tmp_node[0] is not None or tmp_node[2] is not None
 
-    match best_acc_arg:
-        case 0:
-
-            node.left, node.right, node.leaf, node.condition = tmp_node[
-                0], tmp_node[1], tmp_node[2], tmp_node[3]
-            #print("node_change case 0: ", node)
-            #print("node leaf = ", node.leaf)
-            #print("node left = ", node.left)
-            #print("node right = ", node.right)
-            #print("node left leaf = ", node.left.leaf)
-            #print("node right leaf = ", node.right.leaf)
-            #print("node right = ", node.right)
-            #print('tmp_node: ', tmp_node)
-            assert node.left is not None or node.leaf is not None
-
-            return node
-        case 1:
-            node.left, node.right, node.leaf, node.condition = left_node[
-                0], left_node[1], left_node[2], left_node[3]
-            #print("case 1 right: ", node.right)
-            #print("node_change case 1: ", node)
-            #print("node leaf = ", node.leaf)
-            #print("node left leaf = ", node.left.leaf)
-            #print("node right leaf = ", node.right.leaf)
-            #print('left_node: ', left_node)
-
-            return node
-        case 2:
-            node.left, node.right, node.leaf, node.condition = right_node[
-                0], right_node[1], right_node[2], right_node[3]
-            #print("node_change case 2: ", node)
-            #print("node leaf = ", node.leaf)
-            #print("node left leaf = ", node.left.leaf)
-            #print("node right leaf = ", node.right.leaf)
-            #print('right_node: ', right_node)
-            return node
-
+    if best_acc_arg == 0:
+        node.left, node.right, node.leaf, node.condition = tmp_node[
+            0], tmp_node[1], tmp_node[2], tmp_node[3]
+        assert node.left is not None or node.leaf is not None
+    elif best_acc_arg == 1:
+        node.left, node.right, node.leaf, node.condition = left_node[
+            0], left_node[1], left_node[2], left_node[3]
+    elif best_acc_arg == 2:
+        node.left, node.right, node.leaf, node.condition = right_node[
+            0], right_node[1], right_node[2], right_node[3]
+    else:
+        print("Couldn't find matching best_acc_arg")
+        exit(1)
+    return node
 
 def pruning(dataset, node, top_node):
     if node.leaf is not None:
