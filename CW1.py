@@ -20,6 +20,13 @@ class TreeNode:
         self.right = right
         self.leaf = leaf
         self.condition = condition
+        self.x = 0
+        self.y = 0
+        self.mod = 0
+        self.thread = None
+        
+    def is_leaf(self):
+        return self.left is None and self.right is None
 
 
 class SplitCondition:
