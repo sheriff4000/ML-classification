@@ -148,18 +148,18 @@ def clip_tree(dataset, node, top_node):
         case 2:
 
             node.left, node.right, node.leaf, node.condition, node.pruning = tmp_node[0], tmp_node[1], tmp_node[2], tmp_node[3], tmp_node[4]
-            # print("case 0: ", node.pruning)
+            # print("case 2: ", node.pruning)
             assert node.left is not None or node.leaf is not None
             assert node.pruning is False
             return node
         case 0:
             node.left, node.right, node.leaf, node.condition, node.pruning = left_node[0], left_node[1], left_node[2], left_node[3], True
-            # print("case 1: ", node.pruning)
+            # print("case 0: ", node.pruning)
             assert node.pruning is True
             return node
         case 1:
             node.left, node.right, node.leaf, node.condition, node.pruning = right_node[0], right_node[1], right_node[2], right_node[3], True
-            # print("case 2: ", node.pruning)
+            # print("case 1: ", node.pruning)
             assert node.pruning is True
             return node
 
