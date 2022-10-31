@@ -323,8 +323,7 @@ copy_accs = 0
 tmp = 0
 shuffled_dataset = shuffle_dataset(x, random_generator=rg)
 for i in range(10):
-    training_data, test_data, validation_data = split_dataset(
-        shuffled_dataset, i)  # splitting dataset every time
+    training_data, test_data, validation_data = split_dataset(shuffled_dataset, i)  # splitting dataset every time
     # creating new tree based on new training data
     # print("training data: ", training_data)
     # print("test data: ", test_data)
@@ -355,8 +354,7 @@ print("pre prune accs", evaluate(test_data, tree_start_node[0])[0])
 print("best pruned acc no test ", best_acc)
 print("best pruned acc tested", evaluate(test_data, best_pruned_tree)[0])
 
-print("tested against opposite datasets ",
-      evaluate(y, best_pruned_tree)[0])
+print("tested against opposite datasets ", evaluate(y, best_pruned_tree)[0])
 # with open('pruned tree vis.txt', 'w') as f:
 #    print_tree(best_pruned_tree, num_arrows=0)
 
