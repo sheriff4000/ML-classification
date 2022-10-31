@@ -122,7 +122,7 @@ class TreeViz:
         
         if not t.left and not t.right:
             # Display leaf value
-            plt.text(t.x, -t.y * scale_y_by - 0.2, t.leaf, horizontalalignment='center', verticalalignment='top')
+            plt.text(t.x, -t.y * scale_y_by - 0.33, int(t.leaf), horizontalalignment='center', verticalalignment='top')
         else:
             # Display decision node
             bbox = dict(boxstyle='round', facecolor='wheat', alpha=0.95)
