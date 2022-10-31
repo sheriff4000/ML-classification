@@ -27,6 +27,8 @@ class SplitCondition:
         self.attribute = attribute
         self.less_than = less_than
 
+    def __repr__(self):
+        return f"[X{self.attribute} < {self.less_than}]"
 
 class Dataset:
     def __init__(self, dataset) -> None:
