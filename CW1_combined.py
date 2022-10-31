@@ -330,11 +330,9 @@ for i in range(10):
     # print("test data: ", test_data)
     # print("validation data: ", validation_data)
     # print("pruning data: ", pruning_data)
-    training_data_no_prune = np.concatenate(
-        (training_data, validation_data))
+    training_data_no_prune = np.concatenate((training_data, validation_data))
 
-    tree_start_node_no_prune = decision_tree_learning(
-        training_data_no_prune, 0)
+    tree_start_node_no_prune = decision_tree_learning(training_data_no_prune, 0)
 
     tree_start_node = decision_tree_learning(training_data, 0)
     if i == 0:
@@ -344,10 +342,8 @@ for i in range(10):
     with open("original_tree_vis" + str(i)+".txt", "w") as outfile:
         print_tree(tree_start_node[0], outfile, num_arrows=0)
     with open("pruned_tree_vis" + str(i)+".txt", "w") as outfile:
-        print_tree(pruning(
-            validation_data, tree_start_node[0], tree_start_node[0]), outfile, num_arrows=0)
-    best_pruned_tree, best_acc = find_prune(
-        best_pruned_tree, validation_data, test_data, best_acc)
+        print_tree(pruning(validation_data, tree_start_node[0], tree_start_node[0]), outfile, num_arrows=0)
+    best_pruned_tree, best_acc = find_prune(best_pruned_tree, validation_data, test_data, best_acc)
 
     # pre_prune_accs += prune_acc[0]
     # print(prune_acc[1])
