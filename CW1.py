@@ -556,7 +556,7 @@ Test()
 clean_data = np.loadtxt("intro2ML-coursework1/wifi_db/clean_dataset.txt", delimiter="\t")
 noisy_data = np.loadtxt("intro2ML-coursework1/wifi_db/noisy_dataset.txt", delimiter=" ")
 
-seed = 6969
+seed = 1030
 rg = default_rng(seed)
 
 print("CLEAN DATA")
