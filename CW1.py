@@ -319,9 +319,11 @@ def clip_tree(dataset, node: TreeNode, top_node: TreeNode):
         node.left.pruning = True
         return node.left
 
+    existing_metrics = EvalMetrics()
+
     tmp_node = [node.left, node.right, node.leaf, node.condition, node.pruning]
-    accuracies = np.ndarray((3, 1))
-    accuracies[2] = evaluate(dataset, top_node, False)
+    accuracies = [0, 0, 0]
+    accuracies[2] = evaluate(dataset, top_node, False, metrics=existing_metrics)
     node.leaf = tmp_node[0].leaf
     node.left = None
     node.right = None
@@ -340,7 +342,14 @@ def clip_tree(dataset, node: TreeNode, top_node: TreeNode):
                   node.leaf, node.condition, node.pruning]
     accuracies[1] = evaluate(dataset, top_node, False)
 
-    best_acc_arg = accuracies.argmax()
+    best_acc = 0
+    best_acc_arg = 4
+    for i, acc in enumerate(accuracies):
+        if (acc <= best_acc and existing_metrics.nodes_touched > 850) or acc < best_acc:
+            continue
+        best_acc_arg = i
+        best_acc = acc
+
     assert left_node[0] is not None or left_node[2] is not None
     assert right_node[0] is not None or right_node[2] is not None
     assert tmp_node[0] is not None or tmp_node[2] is not None
@@ -431,16 +440,22 @@ def split_dataset(dataset, test_idx, validation_offset):
     training_data = np.concatenate(remaining_data)
     return training_data, test_data, validation_data
 
-def evaluate(test_db, tree_start, confusion_matrix_enabled):
+class EvalMetrics:
+    def __init__(self):
+        self.nodes_touched = 0
+
+def evaluate(test_db, tree_start, confusion_matrix_enabled, metrics:EvalMetrics=None):
     test_data = Dataset(test_db)
     y_classified = []
     
     assert len(test_data) != 0
     
+    counter = 0
     for row in test_data.attributes():
         current_node = tree_start
         
         while not current_node.is_leaf():
+            counter += 1
             assert current_node.left is not None, [current_node]
             assert current_node.right is not None
             if row[current_node.condition.attribute] < current_node.condition.less_than:
@@ -450,6 +465,9 @@ def evaluate(test_db, tree_start, confusion_matrix_enabled):
 
         assert current_node.is_leaf()
         y_classified.append(current_node.leaf)
+
+    if metrics:
+        metrics.nodes_touched = counter
 
     y_classified_nparray = np.array(y_classified)
     accuracy = np.sum(y_classified_nparray == test_data.labels())/len(y_classified)
