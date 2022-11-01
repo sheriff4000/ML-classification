@@ -103,9 +103,7 @@ class TreeViz:
         self.init(self.tree)
         self.plot(self.tree)
         plt.axis('off')
-        print("about to plot")
         plt.show()
-        print("plotting")
     
     def plot(self, t: TreeNode, depth=0):
         """Plots the diagram of a pre-initialised tree.
