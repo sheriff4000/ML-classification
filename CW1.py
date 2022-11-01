@@ -398,17 +398,6 @@ def copy_tree(node: TreeNode):
     new_tree.right = copy_tree(node.right)
     return new_tree
 
-def find_prune(node: TreeNode, validation_data, best_acc):
-    prune_tree = copy_tree(node)
-    test_prune = pruning(validation_data, prune_tree, prune_tree)
-
-    current_acc = evaluate(validation_data, test_prune, False)
-
-    if current_acc > best_acc:
-        return test_prune, current_acc
-    else:
-        return node, best_acc
-
 # split 80/10/10
 def shuffle_dataset(dataset, random_generator=default_rng()):
     shuffled_indecies = random_generator.permutation(len(dataset))
@@ -513,31 +502,33 @@ def machine_learn(dataset, rg=default_rng()):
     
     
     for i in range(10):
+        unpruned_trees = []
+        pruned_trees = []
+        tree_accs = []
         for j in range(1, 10):
             training_data, test_data, validation_data = split_dataset(shuffled_dataset, i, j)
             if j == 1:
                 training_data_no_prune = np.concatenate((training_data, validation_data))
                 tree_start_node_no_prune = decision_tree_learning(training_data_no_prune, 0)
                 no_prune_accs += evaluate(test_data, tree_start_node_no_prune[0], False)
-                
+                TreeViz(tree_start_node_no_prune[0]).render()
             tree_start_node = decision_tree_learning(training_data, 0)
-
-            if j == 1:
-                TreeViz(tree_start_node[0]).render()
-
-                pre_prune_accs += evaluate(test_data, tree_start_node[0], False)
-                best_pruned_tree = tree_start_node[0]
-                best_acc = evaluate(validation_data, tree_start_node[0], False)
-        
-            best_pruned_tree, best_acc = find_prune(best_pruned_tree, validation_data, best_acc)
+            
+            unpruned_trees.append(copy_tree(tree_start_node[0]))
+            pruned_tree = pruning(validation_data, tree_start_node[0], tree_start_node[0])
+            pruned_trees.append(pruned_tree)
+            tree_accs.append(evaluate(validation_data, pruned_tree, False))
     
-
-        TreeViz(best_pruned_tree).render()
-
+        best_acc = 0
+        for i, acc in enumerate(tree_accs):
+            if acc > best_acc:
+                best_pruned_tree = pruned_trees[i]
+                unpruned_best_tree = unpruned_trees[i]
+                best_acc = acc
+        pre_prune_accs += evaluate(test_data, unpruned_best_tree, False)
         post_prune_eval = evaluate(test_data, best_pruned_tree, True)
         post_prune_accs += post_prune_eval[0]
         confusion_matrix += post_prune_eval[1]
-
     post_prune_precisions, post_prune_recalls = precision_and_recall(confusion_matrix)
     
     print("no prune 10 fold average accuracy ", no_prune_accs/10)
