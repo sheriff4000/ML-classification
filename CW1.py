@@ -467,7 +467,7 @@ def evaluate(test_db, tree_start, confusion_matrix_enabled, metrics:EvalMetrics=
 
     return (accuracy)
 
-def precision_and_recall(confusion_matrix):
+def confusion_metrics(confusion_matrix):
     TPs = np.zeros(4)
     FPs = np.zeros(4)
     FNs = np.zeros(4)
@@ -488,8 +488,16 @@ def precision_and_recall(confusion_matrix):
     for i in range(4):
         class_precisions[i] = TPs[i]/(TPs[i]+FPs[i])
         class_recalls[i] = TPs[i]/(TPs[i]+FNs[i])
-    
-    return class_precisions, class_recalls
+
+    F1s = np.zeros(4)
+
+    for i in range(4):
+        F1s[i] = (2*class_precisions[i]*class_recalls[i])/(class_precisions[i]+class_recalls[i])
+
+    accuracy = np.sum(TPs)/(np.sum(TPs)+np.sum(FPs))
+
+    return class_precisions, class_recalls, F1s, accuracy
+
 
 def machine_learn(dataset, rg=default_rng()):
     no_prune_accs = 0
@@ -527,7 +535,8 @@ def machine_learn(dataset, rg=default_rng()):
         post_prune_eval = evaluate(test_data, best_pruned_tree, True)
         post_prune_accs += post_prune_eval[0]
         confusion_matrix += post_prune_eval[1]
-    post_prune_precisions, post_prune_recalls = precision_and_recall(confusion_matrix)
+    
+    post_prune_precisions, post_prune_recalls, post_prune_F1s, post_prune_acc = confusion_metrics(confusion_matrix)
     
     print("no prune 10 fold average accuracy ", no_prune_accs/10)
     print("pre prune 10 fold average accuracy ", pre_prune_accs/10)
@@ -536,8 +545,9 @@ def machine_learn(dataset, rg=default_rng()):
     for i in range(4):
         print("class ", i+1, " precision = ", post_prune_precisions[i])
         print("class ", i+1, " recall = ", post_prune_recalls[i])
-        print("class ", i+1, " F1 = ", (2*post_prune_precisions[i]*post_prune_recalls[i])/(post_prune_precisions[i]+post_prune_recalls[i]))
-    
+        print("class ", i+1, " F1 = ", post_prune_F1s[i])
+    print("confusion acc = ", post_prune_acc)
+
     return
 
 Test()
