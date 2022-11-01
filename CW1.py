@@ -226,7 +226,7 @@ class TreeViz:
         # account the offset based on the parents).
         left_x = left.x + left_x_offset
         right_x = right.x + right_x_offset
-        delta_x = left_x - right.x
+        delta_x = left_x - right_x
         
         # Force some constant spacing between the tree
         min_delta = 10
