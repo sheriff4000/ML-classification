@@ -77,34 +77,39 @@ def mean_depth_finder(node: TreeNode, depth):
 
 def clip_tree(dataset, node: TreeNode, top_node: TreeNode):
     if node.left.is_leaf() and node.right.is_leaf() and node.left.leaf == node.right.leaf:
+        # Clip the tree as we have the same value in both leaves.
         node.left.pruning = True
         return node.left
 
     accuracies = [0] * 3
     
+    LEFT_LEAF_ACC, RIGHT_LEAF_ACC, ORIGINAL_ACC = 0, 1, 2
+    
     # Evaluate existing accuracy
     existing_metrics = EvalMetrics()
-    accuracies[2] = evaluate(dataset, top_node, False, metrics=existing_metrics)
+    accuracies[ORIGINAL_ACC] = evaluate(dataset, top_node, False, metrics=existing_metrics)
     
     tmp_node = [node.left, node.right, node.leaf, node.condition, node.pruning]
-    node.left = None
-    node.right = None
-    node.condition = None
-    node.pruning = False
+    node.left, node.right, node.condition, node.pruning = None, None, None, False
 
     # Evaluate accuracy with `node` replaced with left leaf
-    node.leaf = tmp_node[0].leaf
-    accuracies[0] = evaluate(dataset, top_node, False)
+    node.leaf = tmp_node[LEFT_LEAF_ACC].leaf
+    accuracies[LEFT_LEAF_ACC] = evaluate(dataset, top_node, False)
 
     # Evaluate accuracy with `node` replaced with right leaf
-    node.leaf = tmp_node[1].leaf
-    accuracies[1] = evaluate(dataset, top_node, False)
+    node.leaf = tmp_node[RIGHT_LEAF_ACC].leaf
+    accuracies[RIGHT_LEAF_ACC] = evaluate(dataset, top_node, False)
 
     best_acc_arg, best_acc = 100, 0
     for i, acc in enumerate(accuracies):
         if acc < best_acc:
             continue
         if acc <= best_acc and existing_metrics.nodes_touched > HYPERPARAM_COMPLEXITY_PREFER_PRUNING_WHEN_SAME_ACCURACY:
+            # Since the original node is at the end of the list, by only
+            # allowing this to be chosen when the tree is complex and has the
+            # same accuracy as the pruned version, we limit un-necessary pruning
+            # of non-complex trees. This improves our post-pruning accuracy for
+            # clean data, at a negligible cost for noisy data.
             continue
         best_acc_arg, best_acc = i, acc
 
@@ -113,14 +118,14 @@ def clip_tree(dataset, node: TreeNode, top_node: TreeNode):
     assert tmp_node[1].leaf is not None
     assert tmp_node[0] is not None or tmp_node[2] is not None
 
-    if best_acc_arg == 2:
-        node.left, node.right, node.leaf, node.condition, node.pruning = tmp_node[
-            0], tmp_node[1], tmp_node[2], tmp_node[3], tmp_node[4]
+    if best_acc_arg == ORIGINAL_ACC:
+        node.left, node.right, node.leaf, node.condition, node.pruning = \
+            tmp_node[0], tmp_node[1], tmp_node[2], tmp_node[3], tmp_node[4]
         assert node.left is not None or node.leaf is not None
         assert node.pruning is False
         return node
     
-    # Prune with the most optimal leafg
+    # Prune with the most optimal leaf
     node.leaf = tmp_node[best_acc_arg].leaf
     node.pruning = True
     return node
