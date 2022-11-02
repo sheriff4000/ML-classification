@@ -494,7 +494,7 @@ def confusion_metrics(confusion_matrix):
     for i in range(4):
         F1s[i] = (2*class_precisions[i]*class_recalls[i])/(class_precisions[i]+class_recalls[i])
 
-    accuracy = np.sum(TPs)/(np.sum(TPs)+np.sum(FPs))
+    accuracy = np.sum(np.diag(confusion_matrix))/np.sum(confusion_matrix)
 
     return class_precisions, class_recalls, F1s, accuracy
 
