@@ -11,6 +11,7 @@ from dataset import Dataset
 from tree import TreeNode, SplitCondition
 from viz import TreeViz
 
+HYPERPARAM_COMPLEXITY_PREFER_PRUNING_WHEN_SAME_ACCURACY = 850
 
 class Model:
     def __init__(self, dataset: Dataset):
@@ -81,39 +82,37 @@ def clip_tree(dataset, node: TreeNode, top_node: TreeNode):
         node.left.pruning = True
         return node.left
 
+    accuracies = [0] * 3
+    
+    # Evaluate existing accuracy
     existing_metrics = EvalMetrics()
-
-    tmp_node = [node.left, node.right, node.leaf, node.condition, node.pruning]
-    accuracies = [0, 0, 0]
     accuracies[2] = evaluate(dataset, top_node, False, metrics=existing_metrics)
-    node.leaf = tmp_node[0].leaf
+    
+    tmp_node = [node.left, node.right, node.leaf, node.condition, node.pruning]
     node.left = None
     node.right = None
     node.condition = None
     node.pruning = False
-    left_node = [node.left, node.right,
-                 node.leaf, node.condition, node.pruning]
+
+    # Evaluate accuracy with `node` replaced with left leaf
+    node.leaf = tmp_node[0].leaf
     accuracies[0] = evaluate(dataset, top_node, False)
 
+    # Evaluate accuracy with `node` replaced with right leaf
     node.leaf = tmp_node[1].leaf
-    node.left = None
-    node.right = None
-    node.condition = None
-    node.pruning = False
-    right_node = [node.left, node.right,
-                  node.leaf, node.condition, node.pruning]
     accuracies[1] = evaluate(dataset, top_node, False)
 
-    best_acc = 0
-    best_acc_arg = 4
+    best_acc_arg, best_acc = 100, 0
     for i, acc in enumerate(accuracies):
-        if (acc <= best_acc and existing_metrics.nodes_touched > 850) or acc < best_acc:
+        if acc < best_acc:
             continue
-        best_acc_arg = i
-        best_acc = acc
+        if acc <= best_acc and existing_metrics.nodes_touched > HYPERPARAM_COMPLEXITY_PREFER_PRUNING_WHEN_SAME_ACCURACY:
+            continue
+        best_acc_arg, best_acc = i, acc
 
-    assert left_node[0] is not None or left_node[2] is not None
-    assert right_node[0] is not None or right_node[2] is not None
+    assert best_acc_arg >= 0 and best_acc_arg <= 2
+    assert tmp_node[0].leaf is not None
+    assert tmp_node[1].leaf is not None
     assert tmp_node[0] is not None or tmp_node[2] is not None
 
     if best_acc_arg == 2:
@@ -121,18 +120,11 @@ def clip_tree(dataset, node: TreeNode, top_node: TreeNode):
             0], tmp_node[1], tmp_node[2], tmp_node[3], tmp_node[4]
         assert node.left is not None or node.leaf is not None
         assert node.pruning is False
-    elif best_acc_arg == 0:
-        node.left, node.right, node.leaf, node.condition, node.pruning = left_node[
-            0], left_node[1], left_node[2], left_node[3], True
-        assert node.pruning is True
-    elif best_acc_arg == 1:
-        node.left, node.right, node.leaf, node.condition, node.pruning = right_node[
-            0], right_node[1], right_node[2], right_node[3], True
-        assert node.pruning is True
-    else:
-        print("Failed to match on best_acc_arg")
-        exit(1)
-
+        return node
+    
+    # Prune with the most optimal leafg
+    node.leaf = tmp_node[best_acc_arg].leaf
+    node.pruning = True
     return node
 
 def pruning(dataset, node: TreeNode, top_node: TreeNode):
