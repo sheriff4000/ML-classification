@@ -81,35 +81,35 @@ def clip_tree(dataset, node: TreeNode, top_node: TreeNode):
         node.left.pruning = True
         return node.left
 
-    accuracies = [0] * 3
-    
     LEFT_LEAF_ACC, RIGHT_LEAF_ACC, ORIGINAL_ACC = 0, 1, 2
+    accuracies = [0] * 3
     
     # Evaluate existing accuracy
     existing_metrics = EvalMetrics()
-    accuracies[ORIGINAL_ACC] = evaluate(dataset, top_node, False, metrics=existing_metrics)
+    accuracies[ORIGINAL_ACC], _, original_nodes_touched = evaluate(
+        dataset, top_node, confusion_matrix_enabled=False)
     
     tmp_node = [node.left, node.right, node.leaf, node.condition, node.pruning]
     node.left, node.right, node.condition, node.pruning = None, None, None, False
 
     # Evaluate accuracy with `node` replaced with left leaf
     node.leaf = tmp_node[LEFT_LEAF_ACC].leaf
-    accuracies[LEFT_LEAF_ACC] = evaluate(dataset, top_node, False)
+    accuracies[LEFT_LEAF_ACC] = evaluate_acc(dataset, top_node)
 
     # Evaluate accuracy with `node` replaced with right leaf
     node.leaf = tmp_node[RIGHT_LEAF_ACC].leaf
-    accuracies[RIGHT_LEAF_ACC] = evaluate(dataset, top_node, False)
+    accuracies[RIGHT_LEAF_ACC] = evaluate_acc(dataset, top_node)
 
     best_acc_arg, best_acc = 100, 0
     for i, acc in enumerate(accuracies):
         if acc < best_acc:
             continue
-        if acc <= best_acc and existing_metrics.nodes_touched > HYPERPARAM_COMPLEXITY_PREFER_PRUNING_WHEN_SAME_ACCURACY:
+        if acc <= best_acc and original_nodes_touched > HYPERPARAM_COMPLEXITY_PREFER_PRUNING_WHEN_SAME_ACCURACY:
             # Since the original node is at the end of the list, by only
-            # allowing this to be chosen when the tree is complex and has the
-            # same accuracy as the pruned version, we limit un-necessary pruning
-            # of non-complex trees. This improves our post-pruning accuracy for
-            # clean data, at a negligible cost for noisy data.
+            # allowing this to be chosen when the original tree is complex and
+            # has the same accuracy as the pruned version, we limit un-necessary
+            # pruning of non-complex trees. This improves our post-pruning
+            # accuracy for clean data, at a negligible cost for noisy data.
             continue
         best_acc_arg, best_acc = i, acc
 
@@ -155,12 +155,10 @@ def copy_tree(node: TreeNode):
     new_tree.right = copy_tree(node.right)
     return new_tree
 
-# split 80/10/10
 def shuffle_dataset(dataset, random_generator=default_rng()):
-    shuffled_indecies = random_generator.permutation(len(dataset))
-    shuffled_dataset = dataset[shuffled_indecies]
-
-    return shuffled_dataset
+    return dataset[
+        random_generator.permutation(len(dataset))
+    ]
 
 def split_dataset(dataset, test_idx, validation_offset):
     subsets = np.split(dataset, 10)
@@ -179,18 +177,21 @@ class EvalMetrics:
     def __init__(self):
         self.nodes_touched = 0
 
-def evaluate(test_db, tree_start, confusion_matrix_enabled, metrics:EvalMetrics=None):
+def evaluate_acc(test_db, tree_start):
+    return evaluate(test_db, tree_start, confusion_matrix_enabled=False)[0]
+
+def evaluate(test_db, tree_start, confusion_matrix_enabled=True):
     test_data = Dataset(test_db)
     y_classified = []
     
     assert len(test_data) != 0
     
-    counter = 0
+    accesses = 0
     for row in test_data.attributes():
         current_node = tree_start
         
         while not current_node.is_leaf():
-            counter += 1
+            accesses += 1
             assert current_node.left is not None, [current_node]
             assert current_node.right is not None
             if row[current_node.condition.attribute] < current_node.condition.less_than:
@@ -201,19 +202,15 @@ def evaluate(test_db, tree_start, confusion_matrix_enabled, metrics:EvalMetrics=
         assert current_node.is_leaf()
         y_classified.append(current_node.leaf)
 
-    if metrics:
-        metrics.nodes_touched = counter
-
     y_classified_nparray = np.array(y_classified)
     accuracy = np.sum(y_classified_nparray == test_data.labels())/len(y_classified)
 
+    confusion_matrix = None
     if confusion_matrix_enabled:
         confusion_matrix = np.zeros((4, 4))
         for i in range(len(y_classified_nparray)):
             confusion_matrix[int(test_data.labels()[i])-1, int(y_classified_nparray[i])-1] += 1
-        return (accuracy, confusion_matrix)
-
-    return (accuracy)
+    return (accuracy, confusion_matrix, accesses)
 
 class EvaluationMetrics:
     def __init__(self):
@@ -298,7 +295,7 @@ class TypeEvaluationMetrics:
         self.post_pruning.print("Post-Pruning")
 
 def eval_and_update(tree: TreeNode, test_data: Dataset, metrics: EvaluationMetrics):
-    accuracy, confusion_matrix = evaluate(test_data, tree, True)
+    accuracy, confusion_matrix, _ = evaluate(test_data, tree)
     metrics.update(
         accuracy, 
         max_depth_finder(tree, 0),
@@ -322,13 +319,13 @@ def machine_learn(dataset, rg=default_rng()):
             if j == 1:
                 training_data_no_prune = np.concatenate((training_data, validation_data))
                 tree_start_node_no_prune, no_prune_max_depth = model.decision_tree_learning(Dataset(training_data_no_prune), 0)
-                no_prune_eval = evaluate(test_data, tree_start_node_no_prune, True)
+                no_prune_acc, no_prune_conf_matrix, _ = evaluate(test_data, tree_start_node_no_prune)
                 
                 all_metrics.no_pruning.update(
-                    no_prune_eval[0], 
+                    no_prune_acc, 
                     no_prune_max_depth,
                     mean_depth_finder(tree_start_node_no_prune, 0),
-                    no_prune_eval[1]
+                    no_prune_conf_matrix
                 )
                 
                 TreeViz(tree_start_node_no_prune).render()
@@ -337,7 +334,7 @@ def machine_learn(dataset, rg=default_rng()):
             unpruned_trees.append(copy_tree(tree_start_node[0]))
             pruned_tree = pruning(validation_data, tree_start_node[0], tree_start_node[0])
             pruned_trees.append(pruned_tree)
-            tree_accs.append(evaluate(validation_data, pruned_tree, False))
+            tree_accs.append(evaluate_acc(validation_data, pruned_tree))
     
         best_acc = 0
         for i, acc in enumerate(tree_accs):
