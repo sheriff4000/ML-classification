@@ -1,5 +1,3 @@
-# MAKE SURE
-
 from turtle import pos, shape
 from numpy.random import default_rng
 import numpy as np
