@@ -311,6 +311,22 @@ def decision_tree_learning(training_dataset, depth):
 
     return (node, max(l_depth, r_depth))
 
+def max_depth_finder(node: TreeNode, depth):
+    if node.is_leaf():
+        return depth
+    l_depth = max_depth_finder(node.left, depth + 1)
+    r_depth = max_depth_finder(node.right, depth + 1)
+    return max(l_depth, r_depth)
+
+def mean_depth_finder(node: TreeNode, depth):
+    if node.is_leaf():
+        return depth, 1
+    l_depth, l_num_of_leafs = mean_depth_finder(node.left, depth + 1)
+    r_depth, r_num_of_leafs = mean_depth_finder(node.right, depth + 1)
+    if depth == 0 :
+        return (l_depth + r_depth) / (l_num_of_leafs + r_num_of_leafs)
+    else:
+        return l_depth + r_depth, l_num_of_leafs + r_num_of_leafs
 
 def clip_tree(dataset, node: TreeNode, top_node: TreeNode):
     if node.left.is_leaf() and node.right.is_leaf() and node.left.leaf == node.right.leaf:
@@ -494,17 +510,22 @@ def confusion_metrics(confusion_matrix):
     for i in range(4):
         F1s[i] = (2*class_precisions[i]*class_recalls[i])/(class_precisions[i]+class_recalls[i])
 
-    accuracy = np.sum(np.diag(confusion_matrix))/np.sum(confusion_matrix)
+    accuracy = np.trace(confusion_matrix)/np.sum(confusion_matrix)
 
     return class_precisions, class_recalls, F1s, accuracy
 
 
 def machine_learn(dataset, rg=default_rng()):
     no_prune_accs = 0
+    no_prune_max_depths = 0
+    no_prune_mean_depths = 0
     pre_prune_accs = 0
     post_prune_accs = 0
+    post_prune_max_depths = 0
+    post_prune_mean_depths = 0
     shuffled_dataset = shuffle_dataset(dataset, random_generator=rg)
-    confusion_matrix = np.zeros((4, 4))
+    confusion_matrix_prune = np.zeros((4, 4))
+    confusion_matrix_no_prune = np.zeros((4, 4))
     
     
     for i in range(10):
@@ -515,9 +536,13 @@ def machine_learn(dataset, rg=default_rng()):
             training_data, test_data, validation_data = split_dataset(shuffled_dataset, i, j)
             if j == 1:
                 training_data_no_prune = np.concatenate((training_data, validation_data))
-                tree_start_node_no_prune = decision_tree_learning(training_data_no_prune, 0)
-                no_prune_accs += evaluate(test_data, tree_start_node_no_prune[0], False)
-                TreeViz(tree_start_node_no_prune[0]).render()
+                tree_start_node_no_prune, no_prune_max_depth = decision_tree_learning(training_data_no_prune, 0)
+                no_prune_eval = evaluate(test_data, tree_start_node_no_prune, True)
+                no_prune_accs += no_prune_eval[0]
+                no_prune_max_depths += no_prune_max_depth
+                no_prune_mean_depths += mean_depth_finder(tree_start_node_no_prune, 0)
+                confusion_matrix_no_prune += no_prune_eval[1]
+                TreeViz(tree_start_node_no_prune).render()
             tree_start_node = decision_tree_learning(training_data, 0)
             
             unpruned_trees.append(copy_tree(tree_start_node[0]))
@@ -534,14 +559,27 @@ def machine_learn(dataset, rg=default_rng()):
         pre_prune_accs += evaluate(test_data, unpruned_best_tree, False)
         post_prune_eval = evaluate(test_data, best_pruned_tree, True)
         post_prune_accs += post_prune_eval[0]
-        confusion_matrix += post_prune_eval[1]
+        post_prune_max_depths += max_depth_finder(best_pruned_tree, 0)
+        post_prune_mean_depths += mean_depth_finder(best_pruned_tree, 0)
+        confusion_matrix_prune += post_prune_eval[1]
     
-    post_prune_precisions, post_prune_recalls, post_prune_F1s, post_prune_acc = confusion_metrics(confusion_matrix)
+    post_prune_precisions, post_prune_recalls, post_prune_F1s, post_prune_acc = confusion_metrics(confusion_matrix_prune)
+    no_prune_precisions, no_prune_recalls, no_prune_F1s, no_prune_acc = confusion_metrics(confusion_matrix_no_prune)
     
+    print("no prune max depth average ", no_prune_max_depths/10)
+    print("no prune mean depth average ", no_prune_mean_depths/10)
     print("no prune 10 fold average accuracy ", no_prune_accs/10)
+    print("no prune confusion matrix \n", confusion_matrix_no_prune)
+    for i in range(4):
+        print("class ", i+1, " precision = ", no_prune_precisions[i])
+        print("class ", i+1, " recall = ", no_prune_recalls[i])
+        print("class ", i+1, " F1 = ", no_prune_F1s[i])
+    print("confusion acc = ", no_prune_acc)
     print("pre prune 10 fold average accuracy ", pre_prune_accs/10)
+    print("post prune max depth average ", post_prune_max_depths/10)
+    print("post prune max depth average ", post_prune_mean_depths/10)
     print("post prune 10 fold average accuracy ", post_prune_accs/10)
-    print("post prune confusion matrix \n", confusion_matrix)
+    print("post prune confusion matrix \n", confusion_matrix_prune)
     for i in range(4):
         print("class ", i+1, " precision = ", post_prune_precisions[i])
         print("class ", i+1, " recall = ", post_prune_recalls[i])
@@ -563,6 +601,3 @@ machine_learn(clean_data, rg=rg)
 
 print("NOISY DATA")
 machine_learn(noisy_data, rg=rg)
-
-
-# TODO: visualise tree or something
