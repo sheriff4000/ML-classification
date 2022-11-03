@@ -316,10 +316,12 @@ def machine_learn(dataset, rg=default_rng()):
         eval_and_update(tree_start_node_no_prune, test_data, all_metrics.no_pruning)
         TreeViz(tree_start_node_no_prune).render()
         
+        validation_idxs = set()
         for j in range(K_FOLDS - 1):
             validation_idx = (i+j+1) % 10
             if validation_idx >= i:
                 validation_idx -= 1
+            validation_idxs.add(validation_idx)
 
             validation_data, training_data = holdout_fold(remaining_data, K_FOLDS - 1, validation_idx)
             tree_start_node, _ = model.decision_tree_learning(Dataset(training_data), 0)
@@ -328,6 +330,8 @@ def machine_learn(dataset, rg=default_rng()):
             pruned_tree = pruning(validation_data, tree_start_node, tree_start_node)
             pruned_trees.append(pruned_tree)
             tree_accs.append(evaluate_acc(validation_data, pruned_tree))
+
+        assert len(validation_idxs) == K_FOLDS - 1
 
         best_acc = 0
         for i, acc in enumerate(tree_accs):
