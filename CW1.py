@@ -1,12 +1,8 @@
 from numpy.random import default_rng
 import numpy as np
-import matplotlib.pyplot as plt
-
-import unit_test
 
 from dataset import Dataset
 from tree import TreeNode, SplitCondition
-from viz import TreeViz
 
 K_FOLDS = 10
 HYPERPARAM_COMPLEXITY_PREFER_PRUNING_WHEN_SAME_ACCURACY = 850
@@ -134,7 +130,6 @@ def clip_tree(dataset, node: TreeNode, top_node: TreeNode):
     accuracies = [0] * 3
 
     # Evaluate existing accuracy
-    existing_metrics = EvalMetrics()
     accuracies[ORIGINAL_ACC], _, original_nodes_touched = evaluate(
         dataset, top_node, confusion_matrix_enabled=False)
 
@@ -371,25 +366,3 @@ def eval_and_update(tree: TreeNode, test_data: Dataset, metrics: EvaluationMetri
         confusion_matrix
     )
     return confusion_matrix
-
-
-
-# unit_test.Test()
-
-# seed = 1030
-# rng = default_rng(seed)
-
-# print("CLEAN DATA")
-# clean_data = np.loadtxt(
-#     "intro2ML-coursework1/wifi_db/clean_dataset.txt", delimiter="\t")
-# clean_model = Model(clean_data, rng)
-# clean_metrics = clean_model.run()
-# clean_metrics.print()
-
-
-# print("\n\nNOISY DATA")
-# noisy_data = np.loadtxt(
-#     "intro2ML-coursework1/wifi_db/noisy_dataset.txt", delimiter=" ")
-# noisy_model = Model(noisy_data, rng)
-# noisy_metrics = noisy_model.run()
-# noisy_metrics.print()
