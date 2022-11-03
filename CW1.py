@@ -35,9 +35,7 @@ class Model:
 
             validation_idxs = set()
             for j in range(K_FOLDS - 1):
-                validation_idx = (i+j+1) % 10
-                if validation_idx >= i:
-                    validation_idx -= 1
+                validation_idx = (i+j) % 9
                 validation_idxs.add(validation_idx)
 
                 validation_data, training_data = holdout_fold(
@@ -375,25 +373,23 @@ def eval_and_update(tree: TreeNode, test_data: Dataset, metrics: EvaluationMetri
     return confusion_matrix
 
 
-'''
 
-unit_test.Test()
+# unit_test.Test()
 
-seed = 1030
-rng = default_rng(seed)
+# seed = 1030
+# rng = default_rng(seed)
 
-print("CLEAN DATA")
-clean_data = np.loadtxt(
-    "intro2ML-coursework1/wifi_db/clean_dataset.txt", delimiter="\t")
-clean_model = Model(clean_data, rng)
-clean_metrics = clean_model.run()
-clean_metrics.print()
+# print("CLEAN DATA")
+# clean_data = np.loadtxt(
+#     "intro2ML-coursework1/wifi_db/clean_dataset.txt", delimiter="\t")
+# clean_model = Model(clean_data, rng)
+# clean_metrics = clean_model.run()
+# clean_metrics.print()
 
 
-print("\n\nNOISY DATA")
-noisy_data = np.loadtxt(
-    "intro2ML-coursework1/wifi_db/noisy_dataset.txt", delimiter=" ")
-noisy_model = Model(noisy_data, rng)
-noisy_metrics = noisy_model.run()
-noisy_metrics.print()
-'''
+# print("\n\nNOISY DATA")
+# noisy_data = np.loadtxt(
+#     "intro2ML-coursework1/wifi_db/noisy_dataset.txt", delimiter=" ")
+# noisy_model = Model(noisy_data, rng)
+# noisy_metrics = noisy_model.run()
+# noisy_metrics.print()
