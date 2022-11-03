@@ -16,17 +16,27 @@ HYPERPARAM_COMPLEXITY_PREFER_PRUNING_WHEN_SAME_ACCURACY = 850
 
 
 class Model:
-    # the constructor is given the dataset and random generator and initilises
-    # the Model with these and a shuffled version of the dataset
     def __init__(self, dataset: Dataset, rng: Generator):
+        """Constructs a shuffled dataset from the provided set and returns a new 
+        untrained model.
+
+        Args:
+            dataset (Dataset): The raw dataset.
+            rng (Generator): A random number generator to control randomness.
+        """
         self.dataset = dataset
         self.rng = rng
         self.shuffled_dataset = shuffle_dataset(
             self.dataset, random_generator=rng)
     
-    # runs k-fold cross validation learning and evaluation and returns the
-    # calcuated TypeEvaluationMetrics
-    def run(self):
+
+    def run(self) -> TypeEvaluationMetrics:
+        """Performs K_FOLDS cross validation learning and evaluation and returns the
+        calcuated TypeEvaluationMetrics.
+
+        Returns:
+            TypeEvaluationMetrics: the metrics for generated all trees.
+        """
         all_metrics = TypeEvaluationMetrics()
 
         for i in range(K_FOLDS):
@@ -81,30 +91,43 @@ class Model:
         
         return all_metrics
     
-    # Finds the best way to split the dataset to maximise information gain,
-    # returning the split_condition and each of the corosponding subsets.
+
     def find_split(self, node_data: Dataset) -> tuple[SplitCondition, Dataset, Dataset]:
+        """Finds the best way to split the dataset to maximise information gain,
+        returning the split_condition and each of the corresponding subsets.
+
+        Args:
+            node_data (Dataset): The dataset to split on.
+
+        Returns:
+            tuple[SplitCondition, Dataset, Dataset]: A tuple of the condition to
+            split on and the left and right datasets.
+        """
         max_information_gain = 0
         dataset_entropy = node_data.label_entropy()
-        # one iteration per atribute to check everyone
+        
+        
         for i in range(node_data.attributes().shape[1]):
+            # Loop through all attributes to test them all
             attribute = node_data.dataset[:, i]
-            # range j between the range of the atribute to test spiltting on every possible value 
+            
             for j in range(int(np.amin(attribute)), int(np.amax(attribute)+1)):
-                # split the dataset on less than j
+                # Range between the min and max of the attribute to test
+                # splitting on every possible value.
                 subset_left = Dataset(node_data.dataset[attribute < j])
                 subset_right = Dataset(node_data.dataset[attribute >= j])
 
-                # calculate the entropy of the subsets
+                # Calculate the entropy of the subsets
                 subsets_entropy = ((len(subset_left) / len(node_data)) * subset_left.label_entropy()) + \
                     ((len(subset_right) / len(node_data)) * subset_right.label_entropy())
 
-                # calculate the information gain 
+                # Calculate the information gain
                 information_gain = dataset_entropy - subsets_entropy
-
                 if information_gain < max_information_gain:
+                    # If this split's gain is lower, ignore it
                     continue
-                # if the gain is higher than the current best update the best
+                
+                # Store the best gain
                 max_information_gain = information_gain
                 best_split_condition = SplitCondition(i, j)
                 best_subset_left = subset_left
@@ -114,8 +137,17 @@ class Model:
         
         return best_split_condition, best_subset_left, best_subset_right
     
-    # given a training data set recursivly create a binary classifer tree and return the tree and its max depth
-    def decision_tree_learning(self, training_dataset: Dataset, depth=0):
+
+    def decision_tree_learning(self, training_dataset: Dataset, depth=0) -> tuple[TreeNode, int]:
+        """Recursively creates a binary classification tree using the training_dataset.
+
+        Args:
+            training_dataset (Dataset): The dataset to train on.
+            depth (int, optional): A parameter used during recursion; should be 0 on the initial call.
+
+        Returns:
+            tuple[TreeNode, int]: A tuple of the decision tree and it's max depth.
+        """
         assert len(training_dataset) != 0
 
         labels = training_dataset.unique_labels()
@@ -128,8 +160,19 @@ class Model:
         node = TreeNode(l_branch, r_branch, None, split_cond, False)
         return (node, max(l_depth, r_depth))
 
-# evaluates the differnt case of replacesing a node with one of its leaves or leaving it how it is an picks the best one
-def clip_tree(dataset, node: TreeNode, top_node: TreeNode):
+
+def clip_tree(dataset, node: TreeNode, top_node: TreeNode) -> TreeNode:
+    """Evaluates the each case of replacing a node with one of its leaves, or
+    leaving it untouched and picks the resulting tree with the best accuracy.
+
+    Args:
+        dataset (_type_): The validation set to prune with.
+        node (TreeNode): The node to consider pruning.
+        top_node (TreeNode): The root of the tree to perform a final evaluation after pruning.
+
+    Returns:
+        TreeNode: the node to replace the originally passed in node with.
+    """
     if node.left.is_leaf() and node.right.is_leaf() and node.left.leaf == node.right.leaf:
         # Clip the tree as we have the same value in both leaves.
         node.left.pruned = True
@@ -183,8 +226,18 @@ def clip_tree(dataset, node: TreeNode, top_node: TreeNode):
     node.pruned = True
     return node
 
-# applies pruning to a given tree recursivly and returns the start node
+
 def prune_tree(dataset, node: TreeNode, top_node: TreeNode):
+    """Recursively prunes the given node, returning the pruned tree.
+
+    Args:
+        dataset (_type_): The validation dataset to prune with.
+        node (TreeNode): The node to recursively prune.
+        top_node (TreeNode): The root of the tree to perform a final evaluation after pruning. 
+
+    Returns:
+        _type_: _description_
+    """
     if node.is_leaf():
         # Can't recuse any further than this.
         return node

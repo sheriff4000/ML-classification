@@ -5,27 +5,34 @@ from tree import TreeNode, max_depth_finder, mean_depth_finder
 
 
 class EvaluationMetrics:
-    # construct a EvalMatrics instance with nodes_touched set to 0
     def __init__(self):
+        """Creates a new metrics object used for evaluating tree performance.
+        """
         self.accuracy = []
         self.max_depth = []
         self.mean_depth = []
         self.confusion_matrix = []
     
-    # append to the stored metrics with new given metrics
     def update(self, accuracy, max_depth, mean_depth, confusion_matrix):
+        """Appends the provided values to an internal list of tree metrics.
+        """
         self.accuracy.append(accuracy)
         self.max_depth.append(max_depth)
         self.mean_depth.append(mean_depth)
         self.confusion_matrix.append(confusion_matrix)
         assert np.sum(confusion_matrix) == 200
 
-    # returns the average value for the list of a given internal metric 
+
     def avg(self, vals):
+        """Returns the average of the vals parameter
+        """
         return sum(vals) / len(vals)
 
-    # returns the confusion matrix created by summing all the stored internal confusion matrices
+
     def sum_confusion_matrices(self):
+        """Returns the confusion matrix created by summing all of the stored
+        confusion matrices.
+        """
         if len(self.confusion_matrix) == 0:
             return None
         res = self.confusion_matrix[0]
@@ -33,8 +40,12 @@ class EvaluationMetrics:
             res += mat
         return res
 
-    # calulates sum of all the stored confution matrices and caluates accuracy, precision, recall and f1 for the matrix to get the 10-fold cross validated average for these metrics
+
     def confusion_metrics(self):
+        """Calulates the sum of all the stored confusion matrices and then computes
+        the accuracy, precision, recall and f1 score for the summed matrix to get
+        the 10-fold cross validated average for these metrics.
+        """
         confusion_matrix = self.sum_confusion_matrices()
 
         TPs = np.zeros(4)
@@ -67,8 +78,14 @@ class EvaluationMetrics:
 
         return confusion_matrix, class_precisions, class_recalls, F1s, accuracy
 
-    # print the 10-fold average for all metrics and sum of all the confution matrices from each fold
+
     def print(self, prefix):
+        """Prints the k-fold average for all metrics and sum of all the confusion
+        matrices from each fold.
+
+        Args:
+            prefix (_type_): a prefix to be used before printing; usually the name of the metrics.
+        """
         print(f"[{prefix}] Max Tree Depth Avg:", self.avg(self.max_depth))
         print(f"[{prefix}] Mean Tree Depth avg", self.avg(self.mean_depth))
         print(f"[{prefix}] Ten-fold Accuracy:", self.avg(self.accuracy))
@@ -87,21 +104,28 @@ class EvaluationMetrics:
 
 
 class TypeEvaluationMetrics:
-    # constructor creates an instance of TypeEvaluationMetrics with three EvaluationMetrics one for each of the tree types we want metrics on
     def __init__(self):
         self.no_pruning = EvaluationMetrics()
         self.pre_pruning = EvaluationMetrics()
         self.post_pruning = EvaluationMetrics()
 
-    # trigger the print funtion on each of the EvaluationMetrics with a prefix to tell what tree type the prints are for
+
     def print(self):
         self.no_pruning.print("No Pruning")
         self.pre_pruning.print("Pre-Pruning")
         self.post_pruning.print("Post-Pruning")
 
-# takes a tree and a test dataset and evaluates how well the tree classifies the data set, returning the classification accuracy and the confusion matrix 
-# accesses is also returned so it can be used as a constant to compare our hyper parameter to in pruning
+
 def evaluate(test_db, tree_start: TreeNode, confusion_matrix_enabled=True):
+    """Evaluates how well the tree_start classifies the test_db dataset, returning the
+    classification accuracy and the confusion matrix. Returns the accuracy, a confusion
+    matrix and an estimate of the complexity of the tree.
+
+    Args:
+        test_db (_type_): The test dataset to evaluate the tree with.
+        tree_start (TreeNode): The tree to evaluate
+        confusion_matrix_enabled (bool, optional): Whether to produce a confusion matrix.
+    """
     test_data = Dataset(test_db)
     y_classified = []
 
@@ -133,12 +157,22 @@ def evaluate(test_db, tree_start: TreeNode, confusion_matrix_enabled=True):
             confusion_matrix[int(test_data.labels()[i])-1, int(y_classified_nparray[i])-1] += 1
     return (accuracy, confusion_matrix, accesses)
 
-# runs evaluate with confution_matrix_enabled set to False
-def evaluate_acc(test_db, tree_start):
+
+def evaluate_acc(test_db, tree_start: TreeNode):
+    """Evaluates the provided tree on the test_db dataset and returns the accuracy.
+    """
     return evaluate(test_db, tree_start, confusion_matrix_enabled=False)[0]
 
-# update the internal metrics of a given tree type with a given trees depth metrix and its accuracy and confution matrix when evaluated with a given test dataset
+
 def eval_and_update(tree: TreeNode, test_data: Dataset, metrics: EvaluationMetrics):
+    """Evaluates the performance of the provided tree on the test_data and then
+    update the metrics instance with the results. Returns the confusion matrix.
+
+    Args:
+        tree (TreeNode): The tree to evaluate.
+        test_data (Dataset): The test data to evaluate the tree on.
+        metrics (EvaluationMetrics): The metrics instance to update.
+    """
     accuracy, confusion_matrix, _ = evaluate(test_data, tree)
     metrics.update(
         accuracy,
