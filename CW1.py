@@ -269,12 +269,16 @@ class EvaluationMetrics:
         print(f"[{prefix}] Ten-fold Accuracy:", self.avg(self.accuracy))
         
         confusion_matrix, class_precisions, class_recalls, F1s, _ = self.confusion_metrics()
-        print(f"[{prefix}] Per-class Metrics:", self.avg(self.accuracy))
+        print(f"[{prefix}] Per-class Metrics:")
         for i in range(class_precisions.shape[0]):
             print("\tClass ", i+1, " Precision = ", class_precisions[i])
             print("\tClass ", i+1, " Recall = ", class_recalls[i])
             print("\tClass ", i+1, " F1 = ", F1s[i])
-        print(f"[{prefix}] Confusion Matrix \n", confusion_matrix)
+        print(f"[{prefix}] Confusion Matrix:")
+        
+        str_cf = str(confusion_matrix).split('\n')
+        for line in str_cf:
+            print(f"\t{line}")
 
 class TypeEvaluationMetrics:
     def __init__(self):
