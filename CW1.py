@@ -1,4 +1,3 @@
-from turtle import pos, shape
 from numpy.random import default_rng
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,7 +23,7 @@ class Model:
         for i in range(K_FOLDS):
             unpruned_trees = []
             pruned_trees = []
-            tree_accs = []
+            pruned_trees_accs = []
             
             test_data, remaining_data = holdout_fold(self.shuffled_dataset, K_FOLDS, i)
             tree_start_node_no_prune, _ = \
@@ -44,12 +43,12 @@ class Model:
                 
                 pruned_tree = pruning(validation_data, tree_start_node, tree_start_node)
                 pruned_trees.append(pruned_tree)
-                tree_accs.append(evaluate_acc(validation_data, pruned_tree))
+                pruned_trees_accs.append(evaluate_acc(validation_data, pruned_tree))
 
             assert len(validation_idxs) == K_FOLDS - 1
 
             best_acc = 0
-            for i, acc in enumerate(tree_accs):
+            for i, acc in enumerate(pruned_trees_accs):
                 if acc > best_acc:
                     best_pruned_tree = pruned_trees[i]
                     unpruned_best_tree = unpruned_trees[i]
@@ -59,32 +58,32 @@ class Model:
             eval_and_update(best_pruned_tree, test_data, all_metrics.post_pruning)
         
         return all_metrics
-
-    def find_split(self, training_set: Dataset) -> tuple[SplitCondition, Dataset, Dataset]:
-        max_gain = 0
-        entropy = training_set.label_entropy()
-        for i in range(training_set.attributes().shape[1]):
-            attribute = training_set.dataset[:, i]
+    
+    def find_split(self, node_data: Dataset) -> tuple[SplitCondition, Dataset, Dataset]:
+        max_information_gain = 0
+        dataset_entropy = node_data.label_entropy()
+        for i in range(node_data.attributes().shape[1]):
+            attribute = node_data.dataset[:, i]
             for j in range(int(np.amin(attribute)), int(np.amax(attribute)+1)):
-                a = Dataset(training_set.dataset[attribute < j])
-                b = Dataset(training_set.dataset[attribute >= j])
+                subset_left = Dataset(node_data.dataset[attribute < j])
+                subset_right = Dataset(node_data.dataset[attribute >= j])
 
-                remainder = ((len(a) / len(training_set)) * a.label_entropy()) + \
-                    ((len(b) / len(training_set)) * b.label_entropy())
+                subsets_entropy = ((len(subset_left) / len(node_data)) * subset_left.label_entropy()) + \
+                    ((len(subset_right) / len(node_data)) * subset_right.label_entropy())
 
-                gain = entropy - remainder
+                information_gain = dataset_entropy - subsets_entropy
 
-                if gain < max_gain:
+                if information_gain < max_information_gain:
                     continue
 
-                max_gain = gain
-                split_idx = i
-                split_val = j
-                out_a = a
-                out_b = b
+                max_information_gain = information_gain
+                best_split_condition = SplitCondition(i, j)
+                best_subset_left = subset_left
+                best_subset_right = subset_right
         
-        assert max_gain != 0
-        return SplitCondition(split_idx, split_val), out_a, out_b
+        assert max_information_gain != 0
+        
+        return best_split_condition, best_subset_left, best_subset_right
 
     def decision_tree_learning(self, training_dataset: Dataset, depth=0):
         assert len(training_dataset) != 0
