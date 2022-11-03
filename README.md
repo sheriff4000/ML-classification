@@ -53,7 +53,7 @@ By default this will run the program and output the evaluation metrics for the c
 
 Put the filepath to your dataset in [datapath.txt](datapath.txt).
 
-By default, the code assumes tab delimited data, however if your data does not match this you can update the delimiter on line 42 of [main.py](main.py).
+By default, the code assumes tab delimited data, however if your data does not match this you can update the delimiter on line 43 of [main.py](main.py).
 
 Then run with the following:
 
