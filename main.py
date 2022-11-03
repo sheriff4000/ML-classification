@@ -1,33 +1,42 @@
-from numpy.random import default_rng
+from numpy.random import default_rng, Generator
 import numpy as np
 
-from learning_and_eval import Model
+from learning import Model
 import unit_test
 
+
+RNG_SEED = 1030
+
+
+# Trains the model named `name` on the provided `datapath` data, which is
+# separated by `delimiter` and uses a random number generator `rng` to control
+# randomness.
+def run_model(name: str, datapath: str, delimiter: str, rng: Generator):
+    """Trains a new model on the provided dataset and prints evaluation statistics.
+
+    Args:
+        name (str): The name of the model
+        datapath (str): The path to the dataset to train and evaluate on.
+        delimiter (str): The delimiter which separates attributes in the dataset file.
+        rng (Generator): A random number generator to produce the same results on each run.
+    """
+    print(f"Training on {name}...")
+    dataset = np.loadtxt(datapath, delimiter=delimiter)
+    model = Model(dataset, rng)
+    metrics = model.run()
+    metrics.print()
+    print("\n")
+
+
+# Run unit tests to make sure core functionality works
 unit_test.Test()
 
-seed = 1030
-rng = default_rng(seed)
+# Run the test data sets
+rng = default_rng(RNG_SEED)
+run_model("Clean Data", "intro2ML-coursework1/wifi_db/clean_dataset.txt", "\t", rng)
+run_model("Noisy Data", "intro2ML-coursework1/wifi_db/noisy_dataset.txt", " ", rng)
 
-print("CLEAN DATA")
-clean_data = np.loadtxt("intro2ML-coursework1/wifi_db/clean_dataset.txt", delimiter="\t")
-clean_model = Model(clean_data, rng)
-clean_metrics = clean_model.run()
-clean_metrics.print()
-
-
-print("\n\nNOISY DATA")
-noisy_data = np.loadtxt("intro2ML-coursework1/wifi_db/noisy_dataset.txt", delimiter=" ")
-noisy_model = Model(noisy_data, rng)
-noisy_metrics = noisy_model.run()
-noisy_metrics.print()
-
-text_file = open("datapath.txt", "r")
-datapath = text_file.read()
-
-if datapath != "":
-    print("\n\nUSER DATA")  
-    user_data = np.loadtxt(datapath, delimiter="\t")
-    user_model = Model(user_data, rng)
-    user_metrics = user_model.run()
-    user_metrics.print()
+# Run custom model data
+user_datapath = open("datapath.txt", "r").readline().strip()
+if user_datapath != "":
+    run_model("User Data", user_datapath, "\t", rng)

@@ -1,6 +1,6 @@
 # DoC Intro to ML Coursework 1 - 2022/23
 
-We have created a classifier that will learn from a dataset and evaluate itself with k-fold cross validation.
+We have created a classifier that will learn from a dataset and evaluate itself with 10-fold cross validation.
 The code outputs tree metrics:
 
 - Max depth
@@ -18,10 +18,11 @@ These are outputs for the trees generated without prunning (No Pruning), the tre
 
 ## Dependencies
 
-Run on python3.10 venv
+It is suggested to setup a Python 3.10 virtual environment to run the code.
 
-To set up:
-``` bash
+To do this, run the following instructions:
+
+```bash
 $ cd project_directory
 $ python3.10 -m venv venv
 $ source venv/bin/activate
@@ -31,13 +32,25 @@ $ source venv/bin/activate
 
 ## Running the code
 
-To run the code from the repo directory:
+To run the code, change directory to the repository root, source the venv and then run the following:
 
 ```bash
-$ python ./main.py
+(venv) $ python main.py
 ```
 
-By default this will run the program and output the evaluation metrics for the clean and noisy datasets found in ./intro2ML-coursework1/wifi_db/ . If you would like to also run the program on a new dataset simply put the filepath to your dataset in ./datapath.txt and if needs be change the delimiter in ./main.py line 30 to fit the format of your data.
+By default this will run the program and output the evaluation metrics for the clean and noisy datasets found in [./intro2ML-coursework1/wifi_db](./intro2ML-coursework1/wifi_db).
+
+## Running the model on a new dataset
+
+Put the filepath to your dataset in [datapath.txt](datapath.txt).
+
+By default, the code assumes tab delimited data, however if your data does not match this you can update the delimiter on line 42 of [main.py](main.py).
+
+Then run with the following:
+
+```bash
+(venv) $ python main.py
+```
 
 ## Credits
 
