@@ -1,7 +1,7 @@
 from numpy.random import default_rng, Generator
 import numpy as np
 
-from learning_and_eval import Model
+from learning import Model
 import unit_test
 
 
