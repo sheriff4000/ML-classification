@@ -1,0 +1,24 @@
+from CW1 import unit_test, Model
+from numpy.random import default_rng
+import numpy as np
+
+unit_test.Test()
+
+seed = 1030
+rng = default_rng(seed)
+
+print("CLEAN DATA")
+clean_data = np.loadtxt(
+    "intro2ML-coursework1/wifi_db/clean_dataset.txt", delimiter="\t")
+clean_model = Model(clean_data, rng)
+clean_metrics = clean_model.run()
+clean_metrics.print()
+
+
+print("\n\nNOISY DATA")
+noisy_data = np.loadtxt(
+    "intro2ML-coursework1/wifi_db/noisy_dataset.txt", delimiter=" ")
+noisy_model = Model(noisy_data, rng)
+noisy_metrics = noisy_model.run()
+
+noisy_metrics.print()
