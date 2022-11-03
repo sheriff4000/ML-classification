@@ -37,6 +37,7 @@ run_model("Clean Data", "intro2ML-coursework1/wifi_db/clean_dataset.txt", "\t", 
 run_model("Noisy Data", "intro2ML-coursework1/wifi_db/noisy_dataset.txt", " ", rng)
 
 # Run custom model data
+rng = default_rng(RNG_SEED)
 user_datapath = open("datapath.txt", "r").readline().strip()
 if user_datapath != "":
     run_model("User Data", user_datapath, "\t", rng)
