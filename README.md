@@ -61,6 +61,12 @@ Then run with the following:
 (venv) $ python main.py
 ```
 
+The evaluation data will be printed under following line
+
+```
+Training on User Data...
+```
+
 ## Credits
 
 - [James Nock](https://github.com/Jpnock)
