@@ -1,5 +1,7 @@
 # DoC Intro to ML Coursework 1 - 2022/23
 
+![Clean Tree Visualisation](https://user-images.githubusercontent.com/1413854/199836040-3445f1ac-e499-40cd-9a67-37994a67dd28.png)
+
 We have created a classifier that will learn from a dataset and evaluate itself with 10-fold cross validation.
 
 The code outputs the following tree metrics:
