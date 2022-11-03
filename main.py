@@ -1,6 +1,8 @@
-from CW1 import unit_test, Model
 from numpy.random import default_rng
 import numpy as np
+
+from CW1 import Model
+import unit_test
 
 unit_test.Test()
 
