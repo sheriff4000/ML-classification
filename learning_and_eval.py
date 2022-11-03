@@ -279,9 +279,9 @@ def evaluate(test_db, tree_start, confusion_matrix_enabled=True):
         y_classified.append(current_node.leaf)
 
     y_classified_nparray = np.array(y_classified)
-    accuracy = np.sum(y_classified_nparray ==
-                      test_data.labels())/len(y_classified)
+    accuracy = np.sum(y_classified_nparray == test_data.labels())/len(y_classified)
 
+    #creates confusion matrix
     confusion_matrix = None
     if confusion_matrix_enabled:
         confusion_matrix = np.zeros((4, 4))
