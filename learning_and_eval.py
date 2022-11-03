@@ -13,51 +13,65 @@ HYPERPARAM_COMPLEXITY_PREFER_PRUNING_WHEN_SAME_ACCURACY = 850
 
 
 class Model:
+    # the constructor is given the dataset and random generator and initilises the Model with these and a shuffled version of the dataset
     def __init__(self, dataset: Dataset, rng):
         self.dataset = dataset
         self.rng = rng
         self.shuffled_dataset = shuffle_dataset(
             self.dataset, random_generator=rng)
-
+    
+    # runs k-fold cross validation learning and evaluation and returns the calcuated TypeEvaluationMetrics
     def run(self):
+        # initilise evaluation metrics for the run instance
         all_metrics = TypeEvaluationMetrics()
 
+        # outer loop 1 iteration per fold 
         for i in range(K_FOLDS):
+            # initilise lists for this fold for storing the trees and acuracys created with each option of validation data
             unpruned_trees = []
             pruned_trees = []
             pruned_trees_accs = []
             
+            # seperate this folds test data from the rest of the data
             test_data, remaining_data = holdout_fold(self.shuffled_dataset, K_FOLDS, i)
+            # learn on the remaining data to get the no-pruning tree
             tree_start_node_no_prune, _ = \
                 self.decision_tree_learning(Dataset(remaining_data), 0)
+            #call to update the no-pruning metrics with the evaluation of the tree 
             eval_and_update(tree_start_node_no_prune,
                             test_data, all_metrics.no_pruning)
 
             validation_idxs = set()
+            # inner loop with k-1 iterations 1 per possible validation data for current fold
             for j in range(K_FOLDS - 1):
                 validation_idx = (i+j) % 9
                 validation_idxs.add(validation_idx)
 
+                # seperate the validation data and training data
                 validation_data, training_data = holdout_fold(
                     remaining_data, K_FOLDS - 1, validation_idx)
+                # learn on the training data to get the pre pruned tree
                 tree_start_node, _ = self.decision_tree_learning(
                     Dataset(training_data), 0)
+                # save a copy of the tree before it is pruned
                 unpruned_trees.append(copy_tree(tree_start_node))
-
+                # prune the tree
                 pruned_tree = pruning(
                     validation_data, tree_start_node, tree_start_node)
+                # save the pruned tree and the acuracy of the pruned tree
                 pruned_trees.append(pruned_tree)
                 pruned_trees_accs.append(evaluate_acc(validation_data, pruned_tree))
 
             assert len(validation_idxs) == K_FOLDS - 1
-
+            
+            # find the tree with the best accuracy of the inner loop trees
             best_acc = 0
             for i, acc in enumerate(pruned_trees_accs):
                 if acc > best_acc:
                     best_pruned_tree = pruned_trees[i]
                     unpruned_best_tree = unpruned_trees[i]
                     best_acc = acc
-
+            # evaluate the best pruned tree and its unpruned version and update the corresponding metrics
             eval_and_update(unpruned_best_tree, test_data,
                             all_metrics.pre_pruning)
             eval_and_update(best_pruned_tree, test_data,
@@ -65,23 +79,29 @@ class Model:
 
         return all_metrics
     
+    # taking the dataset at a node find the best way to split it to maximise information gain, returning the split_condition and each of the corosponding subsets
     def find_split(self, node_data: Dataset) -> tuple[SplitCondition, Dataset, Dataset]:
         max_information_gain = 0
         dataset_entropy = node_data.label_entropy()
+        # one iteration per atribute to check everyone
         for i in range(node_data.attributes().shape[1]):
             attribute = node_data.dataset[:, i]
+            # range j between the range of the atribute to test spiltting on every possible value 
             for j in range(int(np.amin(attribute)), int(np.amax(attribute)+1)):
+                # split the dataset on less than j
                 subset_left = Dataset(node_data.dataset[attribute < j])
                 subset_right = Dataset(node_data.dataset[attribute >= j])
 
+                # calculate the entropy of the subsets
                 subsets_entropy = ((len(subset_left) / len(node_data)) * subset_left.label_entropy()) + \
                     ((len(subset_right) / len(node_data)) * subset_right.label_entropy())
 
+                # calculate the information gain 
                 information_gain = dataset_entropy - subsets_entropy
 
                 if information_gain < max_information_gain:
                     continue
-
+                # if the gain is higher than the current best update the best
                 max_information_gain = information_gain
                 best_split_condition = SplitCondition(i, j)
                 best_subset_left = subset_left
