@@ -9,14 +9,56 @@ from dataset import Dataset
 from tree import TreeNode, SplitCondition
 from viz import TreeViz
 
+K_FOLDS = 10
 HYPERPARAM_COMPLEXITY_PREFER_PRUNING_WHEN_SAME_ACCURACY = 850
 
 class Model:
-    def __init__(self, dataset: Dataset):
-        pass
+    def __init__(self, dataset: Dataset, rng):
+        self.dataset = dataset
+        self.rng = rng
+        self.shuffled_dataset = shuffle_dataset(self.dataset, random_generator=rng)
 
-    def train(self):
-        pass
+    def run(self):
+        all_metrics = TypeEvaluationMetrics()
+
+        for i in range(K_FOLDS):
+            unpruned_trees = []
+            pruned_trees = []
+            tree_accs = []
+            
+            test_data, remaining_data = holdout_fold(self.shuffled_dataset, K_FOLDS, i)
+            tree_start_node_no_prune, _ = \
+                self.decision_tree_learning(Dataset(remaining_data), 0)
+            eval_and_update(tree_start_node_no_prune, test_data, all_metrics.no_pruning)
+            
+            validation_idxs = set()
+            for j in range(K_FOLDS - 1):
+                validation_idx = (i+j+1) % 10
+                if validation_idx >= i:
+                    validation_idx -= 1
+                validation_idxs.add(validation_idx)
+
+                validation_data, training_data = holdout_fold(remaining_data, K_FOLDS - 1, validation_idx)
+                tree_start_node, _ = self.decision_tree_learning(Dataset(training_data), 0)
+                unpruned_trees.append(copy_tree(tree_start_node))
+                
+                pruned_tree = pruning(validation_data, tree_start_node, tree_start_node)
+                pruned_trees.append(pruned_tree)
+                tree_accs.append(evaluate_acc(validation_data, pruned_tree))
+
+            assert len(validation_idxs) == K_FOLDS - 1
+
+            best_acc = 0
+            for i, acc in enumerate(tree_accs):
+                if acc > best_acc:
+                    best_pruned_tree = pruned_trees[i]
+                    unpruned_best_tree = unpruned_trees[i]
+                    best_acc = acc
+            
+            eval_and_update(unpruned_best_tree, test_data, all_metrics.pre_pruning)
+            eval_and_update(best_pruned_tree, test_data, all_metrics.post_pruning)
+        
+        return all_metrics
 
     def find_split(self, training_set: Dataset) -> tuple[SplitCondition, Dataset, Dataset]:
         max_gain = 0
@@ -301,64 +343,20 @@ def eval_and_update(tree: TreeNode, test_data: Dataset, metrics: EvaluationMetri
     )
     return confusion_matrix
 
-def machine_learn(dataset, rg=default_rng()):
-    shuffled_dataset = shuffle_dataset(dataset, random_generator=rg)
-    
-    all_metrics = TypeEvaluationMetrics()
-    model = Model(None)
-    
-    K_FOLDS = 10
-    
-    for i in range(K_FOLDS):
-        unpruned_trees = []
-        pruned_trees = []
-        tree_accs = []
-        
-        test_data, remaining_data = holdout_fold(shuffled_dataset, K_FOLDS, i)
-        tree_start_node_no_prune, _ = \
-            model.decision_tree_learning(Dataset(remaining_data), 0)
-        eval_and_update(tree_start_node_no_prune, test_data, all_metrics.no_pruning)
-        TreeViz(tree_start_node_no_prune).render()
-        
-        validation_idxs = set()
-        for j in range(K_FOLDS - 1):
-            validation_idx = (i+j+1) % 10
-            if validation_idx >= i:
-                validation_idx -= 1
-            validation_idxs.add(validation_idx)
-
-            validation_data, training_data = holdout_fold(remaining_data, K_FOLDS - 1, validation_idx)
-            tree_start_node, _ = model.decision_tree_learning(Dataset(training_data), 0)
-            unpruned_trees.append(copy_tree(tree_start_node))
-            
-            pruned_tree = pruning(validation_data, tree_start_node, tree_start_node)
-            pruned_trees.append(pruned_tree)
-            tree_accs.append(evaluate_acc(validation_data, pruned_tree))
-
-        assert len(validation_idxs) == K_FOLDS - 1
-
-        best_acc = 0
-        for i, acc in enumerate(tree_accs):
-            if acc > best_acc:
-                best_pruned_tree = pruned_trees[i]
-                unpruned_best_tree = unpruned_trees[i]
-                best_acc = acc
-        
-        eval_and_update(unpruned_best_tree, test_data, all_metrics.pre_pruning)
-        eval_and_update(best_pruned_tree, test_data, all_metrics.post_pruning)
-    
-    all_metrics.print()
-
 unit_test.Test()
 
-clean_data = np.loadtxt("intro2ML-coursework1/wifi_db/clean_dataset.txt", delimiter="\t")
-noisy_data = np.loadtxt("intro2ML-coursework1/wifi_db/noisy_dataset.txt", delimiter=" ")
-
 seed = 1030
-rg = default_rng(seed)
+rng = default_rng(seed)
 
 print("CLEAN DATA")
-machine_learn(clean_data, rg=rg)
+clean_data = np.loadtxt("intro2ML-coursework1/wifi_db/clean_dataset.txt", delimiter="\t")
+clean_model = Model(clean_data, rng)
+clean_metrics = clean_model.run()
+clean_metrics.print()
+
 
 print("\n\nNOISY DATA")
-machine_learn(noisy_data, rg=rg)
+noisy_data = np.loadtxt("intro2ML-coursework1/wifi_db/noisy_dataset.txt", delimiter=" ")
+noisy_model = Model(noisy_data, rng)
+noisy_metrics = noisy_model.run()
+noisy_metrics.print()
