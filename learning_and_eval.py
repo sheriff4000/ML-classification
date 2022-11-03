@@ -124,7 +124,7 @@ class Model:
         node = TreeNode(l_branch, r_branch, None, split_cond, False)
         return (node, max(l_depth, r_depth))
 
-
+#the following functions find the max and mean depth of the tree
 def max_depth_finder(node: TreeNode, depth):
     if node.is_leaf():
         return depth
@@ -243,8 +243,7 @@ def shuffle_dataset(dataset, random_generator=default_rng()):
 def holdout_fold(dataset, num_splits, holdout_idx):
     subsets = np.split(dataset, num_splits)
     holdout = subsets[holdout_idx]
-    remaining_data = [subsets[i]
-                      for i in range(len(subsets)) if i != holdout_idx]
+    remaining_data = [subsets[i]for i in range(len(subsets)) if i != holdout_idx]
     return holdout, np.concatenate(remaining_data)
 
 
