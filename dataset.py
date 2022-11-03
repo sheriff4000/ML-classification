@@ -1,4 +1,6 @@
+from numpy.random import Generator
 import numpy as np
+
 
 class Dataset:
     def __init__(self, dataset) -> None:
@@ -27,3 +29,16 @@ class Dataset:
 
     def __len__(self):
         return len(self.dataset)
+
+
+def shuffle_dataset(dataset, random_generator: Generator):
+    return dataset[
+        random_generator.permutation(len(dataset))
+    ]
+
+
+def holdout_fold(dataset, num_splits, holdout_idx):
+    subsets = np.split(dataset, num_splits)
+    holdout = subsets[holdout_idx]
+    remaining_data = [subsets[i] for i in range(len(subsets)) if i != holdout_idx]
+    return holdout, np.concatenate(remaining_data)
