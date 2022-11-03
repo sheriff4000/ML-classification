@@ -14,7 +14,7 @@ and class metrics:
 - Recall
 - F1
 
-These are output for the trees generated without prunning (No Pruning), the trees generated with pruning (Post-Pruning), and the trees generated with pruning but before they were pruned (Pre Pruning)
+These are outputs for the trees generated without prunning (No Pruning), the trees generated with pruning (Post-Pruning), and the trees generated with pruning but before they were pruned (Pre Pruning)
 
 ## Dependencies
 
@@ -37,7 +37,7 @@ To run the code from the repo directory:
 $ python ./main.py
 ```
 
-By default this will run the program and output the evaluation metrics for the clean and noisy datasets found in ./intro2ML-coursework1/wifi_db/ . If you would like to also run the program on a new dataset simply put the filepath to your dataset in ./datapath.txt and if needs be change the delimiter in ./main.py line 33 to fit the format of your data.
+By default this will run the program and output the evaluation metrics for the clean and noisy datasets found in ./intro2ML-coursework1/wifi_db/ . If you would like to also run the program on a new dataset simply put the filepath to your dataset in ./datapath.txt and if needs be change the delimiter in ./main.py line 30 to fit the format of your data.
 
 ## Credits
 

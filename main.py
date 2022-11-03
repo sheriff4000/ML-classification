@@ -27,8 +27,7 @@ datapath = text_file.read()
 
 if datapath != "":
     print("\n\nUSER DATA")  
-    user_data = np.loadtxt(
-        datapath, delimiter="\t")
+    user_data = np.loadtxt(datapath, delimiter="\t")
     user_model = Model(user_data, rng)
     user_metrics = user_model.run()
     user_metrics.print()
