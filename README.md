@@ -1,20 +1,25 @@
 # DoC Intro to ML Coursework 1 - 2022/23
 
 We have created a classifier that will learn from a dataset and evaluate itself with 10-fold cross validation.
-The code outputs tree metrics:
+
+The code outputs the following tree metrics:
 
 - Max depth
 - Mean depth
 - Accuracy
 - The confusion matrix
 
-and class metrics:
+It also outputs the following class metrics:
 
 - Precision
 - Recall
 - F1
 
-These are output for the trees generated without prunning (No Pruning), the trees generated with pruning (Post-Pruning), and the trees generated with pruning but before they were pruned (Pre Pruning)
+Outputs will be produced for several trees with
+
+- No-pruning (using a 90/10 split)
+- Pre-pruning (using a 80/10/10 split, although the 10 for the validation set is not used)
+- Post-pruning (using a 80/10/10 split)
 
 ## Dependencies
 
