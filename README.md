@@ -13,6 +13,22 @@ and class metrics:
 - Precision
 - Recall
 - F1
+
+These are output for the trees generated without prunning (No Pruning), the trees generated with pruning (Post-Pruning), and the trees generated with pruning but before they were pruned (Pre Pruning)
+
+## Dependencies
+
+Run on python3.10 venv
+
+To set up:
+``` bash
+$ cd project_directory
+$ python3.10 -m venv venv
+$ source venv/bin/activate
+(venv) $ pip install --upgrade pip
+(venv) $ pip install -r requirements.txt
+```
+
 ## Running the code
 
 To run the code from the repo directory:
