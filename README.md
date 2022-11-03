@@ -23,6 +23,8 @@ Outputs will be produced for several trees with
 - Pre-pruning (using a 80/10/10 split, although the 10 for the validation set is not used)
 - Post-pruning (using a 80/10/10 split)
 
+The report for this project can be found in [report.pdf](report.pdf)
+
 ## Dependencies
 
 It is suggested to setup a Python 3.10 virtual environment to run the code.
