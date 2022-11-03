@@ -1,5 +1,3 @@
-
-
 class TreeNode:
     def __init__(self, left, right, leaf, condition, pruned) -> None:
         self.left = left
