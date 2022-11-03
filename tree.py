@@ -33,7 +33,7 @@ class SplitCondition:
     def __repr__(self):
         return f"[X{self.attribute} < {self.less_than}]"
 
-
+# recursivly finds the max depth of a given tree
 def max_depth_finder(node: TreeNode, depth):
     if node.is_leaf():
         return depth
@@ -41,7 +41,7 @@ def max_depth_finder(node: TreeNode, depth):
     r_depth = max_depth_finder(node.right, depth + 1)
     return max(l_depth, r_depth)
 
-
+# recursively finds the mean depth of a given tree
 def mean_depth_finder(node: TreeNode, depth):
     if node.is_leaf():
         return depth, 1

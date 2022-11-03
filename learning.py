@@ -113,7 +113,8 @@ class Model:
         assert max_information_gain != 0
         
         return best_split_condition, best_subset_left, best_subset_right
-
+    
+    # given a training data set recursivly create a binary classifer tree and return the tree and its max depth
     def decision_tree_learning(self, training_dataset: Dataset, depth=0):
         assert len(training_dataset) != 0
 
@@ -127,7 +128,7 @@ class Model:
         node = TreeNode(l_branch, r_branch, None, split_cond, False)
         return (node, max(l_depth, r_depth))
 
-
+# evaluates the differnt case of replacesing a node with one of its leaves or leaving it how it is an picks the best one
 def clip_tree(dataset, node: TreeNode, top_node: TreeNode):
     if node.left.is_leaf() and node.right.is_leaf() and node.left.leaf == node.right.leaf:
         # Clip the tree as we have the same value in both leaves.
@@ -182,7 +183,7 @@ def clip_tree(dataset, node: TreeNode, top_node: TreeNode):
     node.pruned = True
     return node
 
-
+# applies pruning to a given tree recursivly and returns the start node
 def prune_tree(dataset, node: TreeNode, top_node: TreeNode):
     if node.is_leaf():
         # Can't recuse any further than this.
