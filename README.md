@@ -17,7 +17,7 @@ It also outputs the following class metrics:
 
 Outputs will be produced for several trees with
 
-- No-pruning (using a 90/10 split)
+- No-pruning (using a 90/10/00 split between training, test and validation data)
 - Pre-pruning (using a 80/10/10 split, although the 10 for the validation set is not used)
 - Post-pruning (using a 80/10/10 split)
 
