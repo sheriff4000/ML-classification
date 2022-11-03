@@ -12,11 +12,13 @@ from viz import TreeViz
 K_FOLDS = 10
 HYPERPARAM_COMPLEXITY_PREFER_PRUNING_WHEN_SAME_ACCURACY = 850
 
+
 class Model:
     def __init__(self, dataset: Dataset, rng):
         self.dataset = dataset
         self.rng = rng
-        self.shuffled_dataset = shuffle_dataset(self.dataset, random_generator=rng)
+        self.shuffled_dataset = shuffle_dataset(
+            self.dataset, random_generator=rng)
 
     def run(self):
         all_metrics = TypeEvaluationMetrics()
@@ -25,12 +27,14 @@ class Model:
             unpruned_trees = []
             pruned_trees = []
             tree_accs = []
-            
-            test_data, remaining_data = holdout_fold(self.shuffled_dataset, K_FOLDS, i)
+
+            test_data, remaining_data = holdout_fold(
+                self.shuffled_dataset, K_FOLDS, i)
             tree_start_node_no_prune, _ = \
                 self.decision_tree_learning(Dataset(remaining_data), 0)
-            eval_and_update(tree_start_node_no_prune, test_data, all_metrics.no_pruning)
-            
+            eval_and_update(tree_start_node_no_prune,
+                            test_data, all_metrics.no_pruning)
+
             validation_idxs = set()
             for j in range(K_FOLDS - 1):
                 validation_idx = (i+j+1) % 10
@@ -38,11 +42,14 @@ class Model:
                     validation_idx -= 1
                 validation_idxs.add(validation_idx)
 
-                validation_data, training_data = holdout_fold(remaining_data, K_FOLDS - 1, validation_idx)
-                tree_start_node, _ = self.decision_tree_learning(Dataset(training_data), 0)
+                validation_data, training_data = holdout_fold(
+                    remaining_data, K_FOLDS - 1, validation_idx)
+                tree_start_node, _ = self.decision_tree_learning(
+                    Dataset(training_data), 0)
                 unpruned_trees.append(copy_tree(tree_start_node))
-                
-                pruned_tree = pruning(validation_data, tree_start_node, tree_start_node)
+
+                pruned_tree = pruning(
+                    validation_data, tree_start_node, tree_start_node)
                 pruned_trees.append(pruned_tree)
                 tree_accs.append(evaluate_acc(validation_data, pruned_tree))
 
@@ -54,10 +61,12 @@ class Model:
                     best_pruned_tree = pruned_trees[i]
                     unpruned_best_tree = unpruned_trees[i]
                     best_acc = acc
-            
-            eval_and_update(unpruned_best_tree, test_data, all_metrics.pre_pruning)
-            eval_and_update(best_pruned_tree, test_data, all_metrics.post_pruning)
-        
+
+            eval_and_update(unpruned_best_tree, test_data,
+                            all_metrics.pre_pruning)
+            eval_and_update(best_pruned_tree, test_data,
+                            all_metrics.post_pruning)
+
         return all_metrics
 
     def find_split(self, training_set: Dataset) -> tuple[SplitCondition, Dataset, Dataset]:
@@ -82,23 +91,23 @@ class Model:
                 split_val = j
                 out_a = a
                 out_b = b
-        
+
         assert max_gain != 0
         return SplitCondition(split_idx, split_val), out_a, out_b
 
     def decision_tree_learning(self, training_dataset: Dataset, depth=0):
         assert len(training_dataset) != 0
-        
+
         labels = training_dataset.unique_labels()
         if len(labels[0]) == 1:
             return TreeNode(None, None, labels[0][0], None, False), depth
-
 
         split_cond, l_dataset, r_dataset = self.find_split(training_dataset)
         l_branch, l_depth = self.decision_tree_learning(l_dataset, depth + 1)
         r_branch, r_depth = self.decision_tree_learning(r_dataset, depth + 1)
         node = TreeNode(l_branch, r_branch, None, split_cond, False)
         return (node, max(l_depth, r_depth))
+
 
 def max_depth_finder(node: TreeNode, depth):
     if node.is_leaf():
@@ -107,15 +116,17 @@ def max_depth_finder(node: TreeNode, depth):
     r_depth = max_depth_finder(node.right, depth + 1)
     return max(l_depth, r_depth)
 
+
 def mean_depth_finder(node: TreeNode, depth):
     if node.is_leaf():
         return depth, 1
     l_depth, l_num_of_leafs = mean_depth_finder(node.left, depth + 1)
     r_depth, r_num_of_leafs = mean_depth_finder(node.right, depth + 1)
-    if depth == 0 :
+    if depth == 0:
         return (l_depth + r_depth) / (l_num_of_leafs + r_num_of_leafs)
     else:
         return l_depth + r_depth, l_num_of_leafs + r_num_of_leafs
+
 
 def clip_tree(dataset, node: TreeNode, top_node: TreeNode):
     if node.left.is_leaf() and node.right.is_leaf() and node.left.leaf == node.right.leaf:
@@ -125,12 +136,12 @@ def clip_tree(dataset, node: TreeNode, top_node: TreeNode):
 
     LEFT_LEAF_ACC, RIGHT_LEAF_ACC, ORIGINAL_ACC = 0, 1, 2
     accuracies = [0] * 3
-    
+
     # Evaluate existing accuracy
     existing_metrics = EvalMetrics()
     accuracies[ORIGINAL_ACC], _, original_nodes_touched = evaluate(
         dataset, top_node, confusion_matrix_enabled=False)
-    
+
     tmp_node = [node.left, node.right, node.leaf, node.condition, node.pruning]
     node.left, node.right, node.condition, node.pruning = None, None, None, False
 
@@ -166,65 +177,81 @@ def clip_tree(dataset, node: TreeNode, top_node: TreeNode):
         assert node.left is not None or node.leaf is not None
         assert node.pruning is False
         return node
-    
+
     # Prune with the most optimal leaf
     node.leaf = tmp_node[best_acc_arg].leaf
     node.pruning = True
     return node
 
+
 def pruning(dataset, node: TreeNode, top_node: TreeNode):
+    # checks if the current node is a leaf node
     if node.is_leaf():
+        # immeditately return the node as no traversing downwards can be done
         return node
 
+    # if the current node has a leaf node on both right and left branches
     if node.left.is_leaf() and node.right.is_leaf():
-        # Fruit node
+        # attempts to prune the tree
         return clip_tree(dataset, node, top_node)
 
+    # traversing down both left and right branches
     node.left = pruning(dataset, node.left, top_node)
     node.right = pruning(dataset, node.right, top_node)
+
+    # checks if self.pruning on node is True to re-prune the node
     if node.left.pruning or node.right.pruning:
         node.left.pruning = False
         node.right.pruning = False
         node = pruning(dataset, node, top_node)
     return node
 
+
 def copy_tree(node: TreeNode):
     if node is None:
         return None
 
-    new_tree = node.shallow_copy()    
+    new_tree = node.shallow_copy()
     new_tree.left = copy_tree(node.left)
     new_tree.right = copy_tree(node.right)
     return new_tree
+
+# shuffles dataset before split is done so data is in a random order
+
 
 def shuffle_dataset(dataset, random_generator=default_rng()):
     return dataset[
         random_generator.permutation(len(dataset))
     ]
-    
+
+
 def holdout_fold(dataset, num_splits, holdout_idx):
     subsets = np.split(dataset, num_splits)
     holdout = subsets[holdout_idx]
-    remaining_data = [subsets[i] for i in range(len(subsets)) if i != holdout_idx]
+    remaining_data = [subsets[i]
+                      for i in range(len(subsets)) if i != holdout_idx]
     return holdout, np.concatenate(remaining_data)
+
 
 class EvalMetrics:
     def __init__(self):
         self.nodes_touched = 0
 
+
 def evaluate_acc(test_db, tree_start):
     return evaluate(test_db, tree_start, confusion_matrix_enabled=False)[0]
+
 
 def evaluate(test_db, tree_start, confusion_matrix_enabled=True):
     test_data = Dataset(test_db)
     y_classified = []
-    
+
     assert len(test_data) != 0
-    
+
     accesses = 0
     for row in test_data.attributes():
         current_node = tree_start
-        
+
         while not current_node.is_leaf():
             accesses += 1
             assert current_node.left is not None, [current_node]
@@ -238,14 +265,17 @@ def evaluate(test_db, tree_start, confusion_matrix_enabled=True):
         y_classified.append(current_node.leaf)
 
     y_classified_nparray = np.array(y_classified)
-    accuracy = np.sum(y_classified_nparray == test_data.labels())/len(y_classified)
+    accuracy = np.sum(y_classified_nparray ==
+                      test_data.labels())/len(y_classified)
 
     confusion_matrix = None
     if confusion_matrix_enabled:
         confusion_matrix = np.zeros((4, 4))
         for i in range(len(y_classified_nparray)):
-            confusion_matrix[int(test_data.labels()[i])-1, int(y_classified_nparray[i])-1] += 1
+            confusion_matrix[int(test_data.labels()[i])-1,
+                             int(y_classified_nparray[i])-1] += 1
     return (accuracy, confusion_matrix, accesses)
+
 
 class EvaluationMetrics:
     def __init__(self):
@@ -253,17 +283,17 @@ class EvaluationMetrics:
         self.max_depth = []
         self.mean_depth = []
         self.confusion_matrix = []
-    
+
     def update(self, accuracy, max_depth, mean_depth, confusion_matrix):
         self.accuracy.append(accuracy)
         self.max_depth.append(max_depth)
         self.mean_depth.append(mean_depth)
-        self.confusion_matrix.append(confusion_matrix) 
+        self.confusion_matrix.append(confusion_matrix)
         assert np.sum(confusion_matrix) == 200
-    
+
     def avg(self, vals):
         return sum(vals) / len(vals)
-    
+
     def sum_confusion_matrices(self):
         if len(self.confusion_matrix) == 0:
             return None
@@ -271,24 +301,24 @@ class EvaluationMetrics:
         for mat in self.confusion_matrix[1:]:
             res += mat
         return res
-    
+
     def confusion_metrics(self):
         confusion_matrix = self.sum_confusion_matrices()
-        
+
         TPs = np.zeros(4)
         FPs = np.zeros(4)
         FNs = np.zeros(4)
-        
+
         for i in range(4):
             current_row = confusion_matrix[i, :]
             current_col = confusion_matrix[:, i]
             for j in range(4):
-                if i == j :
+                if i == j:
                     TPs[i] += confusion_matrix[i, j]
                 else:
                     FNs[i] += current_row[j]
                     FPs[i] += current_col[j]
-        
+
         class_precisions = np.zeros(4)
         class_recalls = np.zeros(4)
 
@@ -299,17 +329,18 @@ class EvaluationMetrics:
         F1s = np.zeros(4)
 
         for i in range(4):
-            F1s[i] = (2*class_precisions[i]*class_recalls[i])/(class_precisions[i]+class_recalls[i])
+            F1s[i] = (2*class_precisions[i]*class_recalls[i]) / \
+                (class_precisions[i]+class_recalls[i])
 
         accuracy = np.trace(confusion_matrix)/np.sum(confusion_matrix)
 
-        return confusion_matrix, class_precisions, class_recalls, F1s, accuracy    
+        return confusion_matrix, class_precisions, class_recalls, F1s, accuracy
 
     def print(self, prefix):
         print(f"[{prefix}] Max Tree Depth Avg:", self.avg(self.max_depth))
         print(f"[{prefix}] Mean Tree Depth avg", self.avg(self.mean_depth))
         print(f"[{prefix}] Ten-fold Accuracy:", self.avg(self.accuracy))
-        
+
         confusion_matrix, class_precisions, class_recalls, F1s, _ = self.confusion_metrics()
         print(f"[{prefix}] Per-class Metrics:")
         for i in range(class_precisions.shape[0]):
@@ -317,31 +348,36 @@ class EvaluationMetrics:
             print("\tClass ", i+1, " Recall = ", class_recalls[i])
             print("\tClass ", i+1, " F1 = ", F1s[i])
         print(f"[{prefix}] Confusion Matrix:")
-        
+
         str_cf = str(confusion_matrix).split('\n')
         for line in str_cf:
             print(f"\t{line}")
+
 
 class TypeEvaluationMetrics:
     def __init__(self):
         self.no_pruning = EvaluationMetrics()
         self.pre_pruning = EvaluationMetrics()
         self.post_pruning = EvaluationMetrics()
-    
+
     def print(self):
         self.no_pruning.print("No Pruning")
         self.pre_pruning.print("Pre-Pruning")
         self.post_pruning.print("Post-Pruning")
 
+
 def eval_and_update(tree: TreeNode, test_data: Dataset, metrics: EvaluationMetrics):
     accuracy, confusion_matrix, _ = evaluate(test_data, tree)
     metrics.update(
-        accuracy, 
+        accuracy,
         max_depth_finder(tree, 0),
         mean_depth_finder(tree, 0),
         confusion_matrix
     )
     return confusion_matrix
+
+
+'''
 
 unit_test.Test()
 
@@ -349,14 +385,17 @@ seed = 1030
 rng = default_rng(seed)
 
 print("CLEAN DATA")
-clean_data = np.loadtxt("intro2ML-coursework1/wifi_db/clean_dataset.txt", delimiter="\t")
+clean_data = np.loadtxt(
+    "intro2ML-coursework1/wifi_db/clean_dataset.txt", delimiter="\t")
 clean_model = Model(clean_data, rng)
 clean_metrics = clean_model.run()
 clean_metrics.print()
 
 
 print("\n\nNOISY DATA")
-noisy_data = np.loadtxt("intro2ML-coursework1/wifi_db/noisy_dataset.txt", delimiter=" ")
+noisy_data = np.loadtxt(
+    "intro2ML-coursework1/wifi_db/noisy_dataset.txt", delimiter=" ")
 noisy_model = Model(noisy_data, rng)
 noisy_metrics = noisy_model.run()
 noisy_metrics.print()
+'''
