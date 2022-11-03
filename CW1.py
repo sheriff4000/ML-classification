@@ -159,19 +159,12 @@ def shuffle_dataset(dataset, random_generator=default_rng()):
     return dataset[
         random_generator.permutation(len(dataset))
     ]
-
-def split_dataset(dataset, test_idx, validation_offset):
-    subsets = np.split(dataset, 10)
     
-    validation_idx = (test_idx+validation_offset) % 10
-    assert test_idx != validation_idx
-    
-    test_data = subsets[test_idx]
-    validation_data = subsets[validation_idx]
-
-    remaining_data = [subsets[i] for i in range(len(subsets)) if i != test_idx and i != validation_idx]
-    training_data = np.concatenate(remaining_data)
-    return training_data, test_data, validation_data
+def holdout_fold(dataset, num_splits, holdout_idx):
+    subsets = np.split(dataset, num_splits)
+    holdout = subsets[holdout_idx]
+    remaining_data = [subsets[i] for i in range(len(subsets)) if i != holdout_idx]
+    return holdout, np.concatenate(remaining_data)
 
 class EvalMetrics:
     def __init__(self):
@@ -310,32 +303,32 @@ def machine_learn(dataset, rg=default_rng()):
     all_metrics = TypeEvaluationMetrics()
     model = Model(None)
     
-    for i in range(10):
+    K_FOLDS = 10
+    
+    for i in range(K_FOLDS):
         unpruned_trees = []
         pruned_trees = []
         tree_accs = []
-        for j in range(1, 10):
-            training_data, test_data, validation_data = split_dataset(shuffled_dataset, i, j)
-            if j == 1:
-                training_data_no_prune = np.concatenate((training_data, validation_data))
-                tree_start_node_no_prune, no_prune_max_depth = model.decision_tree_learning(Dataset(training_data_no_prune), 0)
-                no_prune_acc, no_prune_conf_matrix, _ = evaluate(test_data, tree_start_node_no_prune)
-                
-                all_metrics.no_pruning.update(
-                    no_prune_acc, 
-                    no_prune_max_depth,
-                    mean_depth_finder(tree_start_node_no_prune, 0),
-                    no_prune_conf_matrix
-                )
-                
-                TreeViz(tree_start_node_no_prune).render()
-            tree_start_node = model.decision_tree_learning(Dataset(training_data), 0)
+        
+        test_data, remaining_data = holdout_fold(shuffled_dataset, K_FOLDS, i)
+        tree_start_node_no_prune, _ = \
+            model.decision_tree_learning(Dataset(remaining_data), 0)
+        eval_and_update(tree_start_node_no_prune, test_data, all_metrics.no_pruning)
+        TreeViz(tree_start_node_no_prune).render()
+        
+        for j in range(K_FOLDS - 1):
+            validation_idx = (i+j+1) % 10
+            if validation_idx >= i:
+                validation_idx -= 1
+
+            validation_data, training_data = holdout_fold(remaining_data, K_FOLDS - 1, validation_idx)
+            tree_start_node, _ = model.decision_tree_learning(Dataset(training_data), 0)
+            unpruned_trees.append(copy_tree(tree_start_node))
             
-            unpruned_trees.append(copy_tree(tree_start_node[0]))
-            pruned_tree = pruning(validation_data, tree_start_node[0], tree_start_node[0])
+            pruned_tree = pruning(validation_data, tree_start_node, tree_start_node)
             pruned_trees.append(pruned_tree)
             tree_accs.append(evaluate_acc(validation_data, pruned_tree))
-    
+
         best_acc = 0
         for i, acc in enumerate(tree_accs):
             if acc > best_acc:
@@ -347,8 +340,6 @@ def machine_learn(dataset, rg=default_rng()):
         eval_and_update(best_pruned_tree, test_data, all_metrics.post_pruning)
     
     all_metrics.print()
-
-    return
 
 unit_test.Test()
 
