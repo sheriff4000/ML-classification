@@ -1,7 +1,7 @@
 from numpy.random import default_rng
 import numpy as np
 
-from CW1 import Model
+from learning_and_eval import Model
 import unit_test
 
 unit_test.Test()
